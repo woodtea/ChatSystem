@@ -8,29 +8,30 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Client {
 	
 	/**
-	 * @param chat_name:ÁÄÌìµÄÃû×Ö£¬ÈôÊÇÈºÁÄ£¬ÔòÎªÈºÃû£»·ñÔòÎª¶Ô·½ºÃÓÑµÄÃû×Ö
-	 * @param isgroup:ÊÇ·ñÎªÈºÁÄ£¬trueÎªÊÇ£¬falseÎª·ñ
-	 * @return ¸ÃÁÄÌìÊÇ·ñÎªµ±Ç°ÁÄÌì£¬trueÎªÊÇ£¬falseÎª·ñ
+	 * @param chat_name:èŠå¤©çš„åå­—ï¼Œè‹¥æ˜¯ç¾¤èŠï¼Œåˆ™ä¸ºç¾¤åï¼›å¦åˆ™ä¸ºå¯¹æ–¹å¥½å‹çš„åå­—
+	 * @param isgroup:æ˜¯å¦ä¸ºç¾¤èŠï¼Œtrueä¸ºæ˜¯ï¼Œfalseä¸ºå¦
+	 * @return è¯¥èŠå¤©æ˜¯å¦ä¸ºå½“å‰èŠå¤©ï¼Œtrueä¸ºæ˜¯ï¼Œfalseä¸ºå¦
 	 */
 	boolean isCurrentChat(String chat_name, boolean isgroup) {
-		//TODO ÅĞ¶Ï¸ø¶¨µÄÁÄÌìÊÇ·ñÎªµ±Ç°Ö÷´°¿ÚÖĞµÄÁÄÌì
+		//TODO åˆ¤æ–­ç»™å®šçš„èŠå¤©æ˜¯å¦ä¸ºå½“å‰ä¸»çª—å£ä¸­çš„èŠå¤©
 		return true;
 	}
 	/**
-	 * @param friend_name:·¢ËÍĞÅÏ¢ÕßµÄÓÃ»§Ãû£¨¿ÉÄÜÊÇ¶Ô·½£¬Ò²¿ÉÄÜÊÇ×Ô¼º£©
-	 * @param self:·¢ËÍĞÅÏ¢ÕßÊÇ·ñÊÇ×Ô¼º£¬trueÎª×Ô¼º£¬falseÎª²»ÊÇ
-	 * @param info:·¢ËÍµÄĞÅÏ¢
+	 * @param friend_name:å‘é€ä¿¡æ¯è€…çš„ç”¨æˆ·åï¼ˆå¯èƒ½æ˜¯å¯¹æ–¹ï¼Œä¹Ÿå¯èƒ½æ˜¯è‡ªå·±ï¼‰
+	 * @param time:å‘ä»æ¶ˆæ¯çš„æ—¶é—´,æ ¼å¼ä¸ºyear-month-date hour:minute:second
+	 * @param self:å‘é€ä¿¡æ¯è€…æ˜¯å¦æ˜¯è‡ªå·±ï¼Œtrueä¸ºè‡ªå·±ï¼Œfalseä¸ºä¸æ˜¯
+	 * @param info:å‘é€çš„ä¿¡æ¯
 	 */
-	void showMessage(String friend_name, boolean self, String info) {
-		//TODO Õâ¸öº¯ÊıÓÃÀ´ÔÚµ±Ç°½çÃæÖĞÏÔÊ¾ĞÅÏ¢£¬¶Ô·½µÄĞÅÏ¢ÔÚ×ó²àÏÔÊ¾£¬×Ô¼ºµÄĞÅÏ¢ÔÚÓÒ²àÏÔÊ¾
+	void showMessage(String friend_name, String time, boolean self, String info) {
+		//TODO è¿™ä¸ªå‡½æ•°ç”¨æ¥åœ¨å½“å‰ç•Œé¢ä¸­æ˜¾ç¤ºä¿¡æ¯ï¼Œå¯¹æ–¹çš„ä¿¡æ¯åœ¨å·¦ä¾§æ˜¾ç¤ºï¼Œè‡ªå·±çš„ä¿¡æ¯åœ¨å³ä¾§æ˜¾ç¤º
 		
 	}
 	/**
-	 * @param chat_name:ÁÄÌìµÄÃû×Ö£¬ÈôÊÇÈºÁÄ£¬ÔòÎªÈºÃû£»·ñÔòÎª¶Ô·½ºÃÓÑµÄÃû×Ö
-	 * @param isgroup:ÊÇ·ñÎªÈºÁÄ£¬trueÎªÊÇ£¬falseÎª·ñ
+	 * @param chat_name:èŠå¤©çš„åå­—ï¼Œè‹¥æ˜¯ç¾¤èŠï¼Œåˆ™ä¸ºç¾¤åï¼›å¦åˆ™ä¸ºå¯¹æ–¹å¥½å‹çš„åå­—
+	 * @param isgroup:æ˜¯å¦ä¸ºç¾¤èŠï¼Œtrueä¸ºæ˜¯ï¼Œfalseä¸ºå¦
 	 */
 	void remindMessage(String chat_name, boolean isgroup) {
-		//TODO ½«Ö¸¶¨µÄÁÄÌì£¨²¢·Çµ±Ç°ÁÄÌì£©ÒÆ¶¯µ½ºÃÓÑÁĞ±íµÄµÚÒ»¸ö£¬²¢ÏÔÊ¾Ò»¸öºìµã
+		//TODO å°†æŒ‡å®šçš„èŠå¤©ï¼ˆå¹¶éå½“å‰èŠå¤©ï¼‰ç§»åŠ¨åˆ°å¥½å‹åˆ—è¡¨çš„ç¬¬ä¸€ä¸ªï¼Œå¹¶æ˜¾ç¤ºä¸€ä¸ªçº¢ç‚¹
 		
 	}
 	

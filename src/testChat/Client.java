@@ -1,41 +1,13 @@
 package testChat;
 
+import gui.Functions;
 import java.io.*;
 import java.net.*;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Client {
-	
-	/**
-	 * @param chat_name:聊天的名字，若是群聊，则为群名；否则为对方好友的名字
-	 * @param isgroup:是否为群聊，true为是，false为否
-	 * @return 该聊天是否为当前聊天，true为是，false为否
-	 */
-	boolean isCurrentChat(String chat_name, boolean isgroup) {
-		//TODO 判断给定的聊天是否为当前主窗口中的聊天
-		return true;
-	}
-	/**
-	 * @param friend_name:发送信息者的用户名（可能是对方，也可能是自己）
-	 * @param time:发从消息的时间,格式为year-month-date hour:minute:second
-	 * @param self:发送信息者是否是自己，true为自己，false为不是
-	 * @param info:发送的信息
-	 */
-	void showMessage(String friend_name, String time, boolean self, String info) {
-		//TODO 这个函数用来在当前界面中显示信息，对方的信息在左侧显示，自己的信息在右侧显示
-		
-	}
-	/**
-	 * @param chat_name:聊天的名字，若是群聊，则为群名；否则为对方好友的名字
-	 * @param isgroup:是否为群聊，true为是，false为否
-	 */
-	void remindMessage(String chat_name, boolean isgroup) {
-		//TODO 将指定的聊天（并非当前聊天）移动到好友列表的第一个，并显示一个红点
-		
-	}
-	
-	
 	
 	class RecieveThread extends Thread {
 		ObjectInputStream ois;
@@ -58,20 +30,55 @@ public class Client {
 					synchronized(requestFriend){
 						requestFriend.put(id, true);
 					}
+					Functions.showAddFriendRequest(from, info);
 				}
 				if (type == 7) {
+					Functions.showAddFriendReply(from, info);
 				}
 				
 				if (type == 8) {
+					/* 测试用代码
 					int fromid=Integer.parseInt(from);
 					if (id2name.containsKey(fromid))
 						System.out.println("("+id2name.get(fromid)+") "+info);
 					else
 						System.out.println("( id: "+fromid+" ) "+info);
+					*/
+					
+					SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//设置日期格式
+					String time = df.format(new Date());
+					if(isgroup) {	//是群聊
+						String group_name = group_id2name.get(Integer.parseInt(from.split("_")[1]));
+						String friend_name = id2name.get(Integer.parseInt(from.split("_")[0]));
+						Functions.showGroupMessage(group_name, friend_name, time, info);
+					}
+					else {	//不是群聊
+						String friend_name = id2name.get(Integer.parseInt(from));
+						Functions.showFriendMessage(friend_name, time, info);
+					}
 				}
 				
 				if (type == 9) {
 					parseFriend(info);
+					
+				}
+				
+				// type == 10, 删除好友信息包不会被转发给用户，所以客户端不可能收到type == 10的包
+				
+				if(type == 11) {
+					
+				}
+				if(type == 12) {
+					
+				}
+				if(type == 13) {
+					
+				}
+				if(type == 14) {
+					
+				}
+				if(type == 15) {
+					
 				}
 				
 				if (type != 8)
@@ -85,26 +92,46 @@ public class Client {
 	private Integer id;
 	private ConcurrentHashMap<String, Integer> name2id;
 	private ConcurrentHashMap<Integer, String> id2name;
+	private ConcurrentHashMap<String, Integer> group_name2id;
+	private ConcurrentHashMap<Integer, String> group_id2name;
 	private HashMap<Integer, Boolean>requestFriend;
+	private boolean alreadySignIn = false;
+	private boolean alreadySignOff = false;
+	private OutputStream os = null;
+	private PrintWriter pw = null;
+	private ObjectOutputStream oos = null;
+	
+	private boolean inChatRoom=false;
+	private String defaultDes="";
 
-	private void parse_information(String msg) {
-		msg.split("\n");
+	private InputStream is = null;
+	private BufferedReader br = null;
+	private ObjectInputStream ois = null;
+	
+	private Socket socket = null;
+	
+	public String getName() {
+		return name;
 	}
-
+	public Integer getId() {
+		return id;
+	}
+	public ConcurrentHashMap<String, Integer> getName2id() {
+		return name2id;
+	}
+	public ConcurrentHashMap<Integer, String> getId2name() {
+		return id2name;
+	}
+	public ConcurrentHashMap<String, Integer> getGroup_name2id() {
+		return group_name2id;
+	}
+	public ConcurrentHashMap<Integer, String> getGroup_id2name() {
+		return group_id2name;
+	}
+	
 	private Client() throws Exception {
-		OutputStream os = null;
-		PrintWriter pw = null;
-		ObjectOutputStream oos = null;
-		
-		boolean inChatRoom=false;
-		String defaultDes="";
-
-		InputStream is = null;
-		BufferedReader br = null;
-		ObjectInputStream ois = null;
 
 		Scanner sc = null;
-		Socket socket = null;
 		
 		name2id = new ConcurrentHashMap<String, Integer>();
 		id2name = new ConcurrentHashMap<Integer, String>();
@@ -125,11 +152,10 @@ public class Client {
 			br = new BufferedReader(new InputStreamReader(is));
 			ois = new ObjectInputStream(is);
 
-			sc = new Scanner(System.in);
-
-			boolean alreadySignIn = false;
+			//sc = new Scanner(System.in);
 
 			while (alreadySignIn == false) {
+				/*	测试用代码
 				int type = sc.nextInt();
 				sc.nextLine();
 
@@ -156,12 +182,12 @@ public class Client {
 					
 					parseInfo(info);
 				}
+				*/
+				System.out.println("(client) already sign in.");
 			}
 			
 			RecieveThread recieve = new RecieveThread(ois);
 			recieve.start();
-			
-			boolean alreadySignOff = false;
 
 			while (alreadySignOff == false) {
 				
@@ -213,6 +239,7 @@ public class Client {
 		} catch (IOException e) {
 			e.printStackTrace();
 		} finally {
+			sc.close();
 			if (ois != null)
 				ois.close();
 			if (oos != null)
@@ -229,6 +256,41 @@ public class Client {
 				socket.close();
 			System.out.println("end!");
 		}
+	}
+	
+	public String signUp(String user_name, String password) {
+		if (can_send(1, 0, user_name + " " + password)) {
+			IOControl.print(oos, new Message(1, user_name + " " + password));
+			Message msg = IOControl.read(ois);
+			int type = msg.get_type();
+			String info = msg.get_msg();
+			return type + "_" + info;
+		}
+		else
+			return "fail to sign up!";
+	}
+	
+	public String signIn(String user_name, String password) {
+		if (can_send(2, 0, user_name + " " + password)) {
+			IOControl.print(oos, new Message(2, user_name + " " + password));
+			Message msg = IOControl.read(ois);
+			int type = msg.get_type();
+			String info = msg.get_msg();
+			if(type == 4) {
+				alreadySignIn = true;
+				name = user_name;
+				parseInfo(info);	//解析好友列表
+				//解析群列表
+			}
+			return type + "_" + info;
+		}
+		else
+			return "no space and '\n' in account name or password!";
+	}
+	
+	public void signOff() {
+		alreadySignIn = true;
+		alreadySignOff = true;
 	}
 	
 	private void parseInfo(String info) {
@@ -248,9 +310,14 @@ public class Client {
 		}
 	}
 	
+	private void parseGroup(String info) {
+		
+	}
+	
 	private boolean can_send(int type, int id, String msg){
 		switch(type){
 			case 1:
+				return true;
 			case 2:
 				int SpaceCount=0,nCount=0,len=msg.length();
 				for (int i=0;i<len;++i)
@@ -307,6 +374,7 @@ public class Client {
 			System.out.println(e.getValue()+" "+e.getKey());
 	}
 
+	@SuppressWarnings("unused")
 	public static void main(String[] args) throws Exception {
 		Client myClient = new Client();
 	}

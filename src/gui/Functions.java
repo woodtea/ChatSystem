@@ -1,6 +1,9 @@
 package gui;
 
 import testChat.Client;
+
+import java.util.concurrent.ConcurrentHashMap;
+
 import javax.swing.ImageIcon;
 
 /**
@@ -79,16 +82,39 @@ public class Functions {
 		return false;
 	}
 	
-	static class user
+	static ConcurrentHashMap<Integer, user> getFriendList(){
+		return client.getFriendList();
+	}
+	
+	static ConcurrentHashMap<Integer, group> getGroupList(){
+		return client.getGroupList();
+	}
+	
+	public static class user
 	{
 		String name;
+		int id;
 		ImageIcon icon;
+		public user(String name, int id, ImageIcon icon){
+			this.name = name;
+			this.id = id;
+			this.icon = icon;
+		}
 		user(int i)//这个函数是测试用的，请自行添加字段和构造函数
 		{
 			name="崔牧原";
 			icon=new ImageIcon("cmy.jpg");
 		}
 		//TODO
+	}
+	
+	public static class group{
+		String name;
+		int id;
+		public group(String name, int id){
+			this.name = name;
+			this.id = id;
+		}
 	}
 	
 	//以下为UI需实现的方法

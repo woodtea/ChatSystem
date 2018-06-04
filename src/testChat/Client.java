@@ -1,6 +1,8 @@
 package testChat;
 
 import gui.Functions;
+import gui.Functions.user;
+
 import java.io.*;
 import java.net.*;
 import java.text.SimpleDateFormat;
@@ -92,6 +94,7 @@ public class Client {
 	private Integer id;
 	private ConcurrentHashMap<String, Integer> name2id;
 	private ConcurrentHashMap<Integer, String> id2name;
+	private ConcurrentHashMap<Integer, User> friendList;
 	private ConcurrentHashMap<String, Integer> group_name2id;
 	private ConcurrentHashMap<Integer, String> group_id2name;
 	private HashMap<Integer, Boolean>requestFriend;
@@ -183,14 +186,14 @@ public class Client {
 					parseInfo(info);
 				}
 				*/
-				System.out.println("(client) already sign in.");
 			}
+			System.out.println("(client) already sign in.");
 			
 			RecieveThread recieve = new RecieveThread(ois);
 			recieve.start();
 
 			while (alreadySignOff == false) {
-				
+				/* 测试用代码
 				if (inChatRoom){
 					String inp=sc.nextLine();
 					if (inp.equals("\\quit"))
@@ -232,7 +235,9 @@ public class Client {
 					defaultDes=to;
 					System.out.println("Start chat");
 				}
+				*/
 			}
+			System.out.println("(client) already sign off.");
 			
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
@@ -291,6 +296,22 @@ public class Client {
 	public void signOff() {
 		alreadySignIn = true;
 		alreadySignOff = true;
+	}
+	
+	public ConcurrentHashMap<Integer, Functions.user> getFriendList(){
+		ConcurrentHashMap<Integer, Functions.user> list = new ConcurrentHashMap<Integer, Functions.user>();
+		for(Integer i : friendList.keySet()) {
+			list.put(i, new Functions.user(friendList.get(i).name, i, friendList.get(i).image));
+		}
+		return list;
+	}
+	
+	public ConcurrentHashMap<Integer, Functions.group> getGroupList(){
+		ConcurrentHashMap<Integer, Functions.group> list = new ConcurrentHashMap<Integer, Functions.group>();
+		for(Integer i : group_id2name.keySet()) {
+			list.put(i, new Functions.group(group_id2name.get(i), i));
+		}
+		return list;
 	}
 	
 	private void parseInfo(String info) {

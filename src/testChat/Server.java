@@ -16,6 +16,10 @@ import com.mchange.v2.c3p0.*;
  * 		最初肯定客户端知道自己账号的好友信息与群信息，因此
  * 		完全不需要交给服务器来判断.直接让其来转发即可.
  * 		server更像一个路由的功能.
+ * 		②数据库的事务回滚
+ * 		③ACK帧确认重发.
+ * 		④加密
+ * 		⑤邮箱修改？
  */
 
 /*
@@ -486,8 +490,146 @@ public class Server {
 		return newGroupId;
 	}
 	
-	protected void delete_group(){
+	protected int delete_group(String groupId){
+		DBControl db = new DBControl(true);
 		
+		Integer id = Integer.parseInt(groupId);
+		
+		String sql = "delete from group_member where group_id=?";
+		PreparedStatement stmt = db.getStatement(sql);
+		
+		try {
+			stmt.setInt(1, id);
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return -1;
+		}
+		
+		stmt = null;
+		
+		db.update();
+		db.clean();
+		db = new DBControl(true);
+		sql = "delete from groups where group_id=?";
+		stmt = db.getStatement(sql);
+		
+		try {
+			stmt.setInt(1, id);
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return -1;
+		}
+		
+		stmt = null;
+		
+		db.update();
+		db.clean();
+		return 0;
+	}
+	
+	/*
+	 * return 0 表示插入成功
+	 * return 1 表示已经存在好友
+	 * return -1 表示发生异常错误插入失败
+	 */
+	protected int insert_group_member(String to, String groupID){
+		DBControl db = new DBControl(true);
+		
+		Integer id = Integer.parseInt(groupID);
+		Integer toID = Integer.parseInt(to);
+		
+		String sql="select * from group_member where group_id=? and member_id=?";
+		PreparedStatement stmt = db.getStatement(sql);
+		
+		try {
+			stmt.setInt(1, id);
+			stmt.setInt(2, toID);
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return -1;
+		}
+		stmt = null;
+		
+		ResultSet rs=db.query();
+		try {
+			if (rs!=null&&rs.next())
+				return 1;
+		} catch (SQLException e1) {
+			e1.printStackTrace();
+			//return -1;
+		}
+		
+		db.closeResultSet(rs);
+		db.clean();
+		
+		db = new DBControl(true);
+		
+		sql = "insert into group_member VALUES(?,?)";
+		stmt = db.getStatement(sql);
+		
+		try {
+			stmt.setInt(1, id);
+			stmt.setInt(2, toID);
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return -1;
+		}
+		
+		stmt = null;
+		db.update();
+		db.clean();
+		
+		return 0;
+	}
+	
+	protected int delete_group_member(String to, String groupID){
+		DBControl db = new DBControl(true);
+		
+		Integer id = Integer.parseInt(groupID);
+		Integer toID = Integer.parseInt(to);
+		
+		String sql="select * from group_member where group_id=? and member_id=?";
+		PreparedStatement stmt = db.getStatement(sql);
+		
+		try {
+			stmt.setInt(1, id);
+			stmt.setInt(2, toID);
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return -1;
+		}
+		stmt = null;
+		
+		ResultSet rs=db.query();
+		try {
+			if (rs==null||rs.next()==false)
+				return 1;
+		} catch (SQLException e1) {
+			e1.printStackTrace();
+			//return -1;
+		}
+		
+		db.closeResultSet(rs);
+		db.clean();
+		
+		db = new DBControl(true);
+		
+		sql = "delete from group_member where group_id=? and member_id=?";
+		stmt = db.getStatement(sql);
+		
+		try {
+			stmt.setInt(1, id);
+			stmt.setInt(2, toID);
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return -1;
+		}
+		
+		stmt = null;
+		db.update();
+		db.clean();
+		
+		return 0;
 	}
 	
 	private Server() {

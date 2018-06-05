@@ -1,11 +1,18 @@
 package testChat;
 
+import sun.misc.BASE64Decoder; 
+
 import java.net.*;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.nio.*;
 import java.nio.channels.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
+import java.awt.image.*;
+
+import javax.imageio.ImageIO; 
 
 import java.sql.*;
 import com.mchange.v2.c3p0.*;
@@ -44,6 +51,7 @@ import com.mchange.v2.c3p0.*;
  *		1)方法名采用 _ 分隔符命名
  *		2)类名,变量名采用大写命名.
  */
+
 public class Server {
 
 	ConcurrentHashMap<String, String> account;
@@ -393,7 +401,6 @@ public class Server {
 
 	/*
 	 * 返回对应accountID的server进程类.
-	 * 
 	 */
 	protected ServerThread get_accountServer(String accountID) {
 		Integer id=Integer.parseInt(accountID);
@@ -630,6 +637,34 @@ public class Server {
 		db.clean();
 		
 		return 0;
+	}
+	
+	protected void set_image(String id, String base64String){
+		BufferedImage tmp = ImageControl.base64StringToImg(base64String);
+		
+		File filePath = new File("img");
+		if (!filePath.exists())
+			filePath.mkdir();
+		
+		try {
+			ImageIO.write(tmp, "jpg", new File("img"+separator+id+".jpg"));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/*
+	 * 返回null表示读取失败
+	 */
+	protected String get_image(String id){
+		BufferedImage tmp = null;
+		try {
+			tmp = ImageIO.read(new FileInputStream("img"+separator+id+".jpg"));
+		} catch (IOException e) {
+			e.printStackTrace();
+			return null;
+		}
+		return ImageControl.imgToBase64String(tmp);
 	}
 	
 	private Server() {

@@ -11,7 +11,7 @@ import java.util.Base64;
 
 import javax.imageio.ImageIO;
 
-import sun.misc.BASE64Decoder;
+import java.util.Base64.Decoder;
 
 /*
  * 图片与字符串的转换代码来源于
@@ -30,8 +30,8 @@ public class ImageControl {
     
     public static BufferedImage base64StringToImg(final String base64String) {  
         try {  
-            BASE64Decoder decoder = new BASE64Decoder();  
-            byte[] bytes = decoder.decodeBuffer(base64String);  
+            Decoder decoder = Base64.getDecoder(); 
+            byte[] bytes = decoder.decode(base64String);
             ByteArrayInputStream bais = new ByteArrayInputStream(bytes);  
             return ImageIO.read(bais);  
         } catch (final IOException ioe) {  

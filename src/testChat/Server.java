@@ -1,7 +1,5 @@
 package testChat;
 
-import sun.misc.BASE64Decoder; 
-
 import java.net.*;
 import java.io.*;
 import java.util.*;
@@ -11,6 +9,7 @@ import java.nio.channels.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.awt.image.*;
+import java.util.Base64.Decoder;
 
 import javax.imageio.ImageIO; 
 
@@ -694,7 +693,7 @@ public class Server {
 	protected String get_image(String id){
 		BufferedImage tmp = null;
 		try {
-			tmp = ImageIO.read(new FileInputStream("img"+separator+id+".jpg"));
+			tmp = ImageIO.read(new FileInputStream(id+".jpg"));
 		} catch (IOException e) {
 			e.printStackTrace();
 			return null;
@@ -711,7 +710,7 @@ public class Server {
 
 			int count = 0;
 			System.out.println("server to start");
-
+		
 			while (true) {
 				// a new client connect in
 				socket = serversocket.accept();

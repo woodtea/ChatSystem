@@ -40,6 +40,7 @@ public class Functions {
 		return false;
 	}
 	
+	
 	static class user
 	{
 		String name;

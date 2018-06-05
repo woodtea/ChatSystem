@@ -67,6 +67,7 @@ public class Log {
 		
 		JButton login = new JButton("登录");
 		login.setBounds(80, 340, 123, 29);
+		
 		contentPane.add(login);
 		
 		login.addMouseListener(new MouseAdapter() {

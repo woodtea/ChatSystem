@@ -257,7 +257,7 @@ public class Server {
 		
 		db.closeResultSet(rs);
 		db.clean();
-		System.out.println("Result "+result);
+		//System.out.println("Result "+result);
 		return result;
 	}
 

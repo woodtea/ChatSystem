@@ -6,6 +6,12 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.nio.*;
 import java.nio.channels.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
+import java.awt.image.*;
+import java.util.Base64.Decoder;
+
+import javax.imageio.ImageIO; 
 
 import java.sql.*;
 import com.mchange.v2.c3p0.*;
@@ -16,6 +22,10 @@ import com.mchange.v2.c3p0.*;
  * 		最初肯定客户端知道自己账号的好友信息与群信息，因此
  * 		完全不需要交给服务器来判断.直接让其来转发即可.
  * 		server更像一个路由的功能.
+ * 		②数据库的事务回滚
+ * 		③ACK帧确认重发.
+ * 		④加密
+ * 		⑤邮箱修改？
  */
 
 /*
@@ -40,6 +50,7 @@ import com.mchange.v2.c3p0.*;
  *		1)方法名采用 _ 分隔符命名
  *		2)类名,变量名采用大写命名.
  */
+
 public class Server {
 
 	ConcurrentHashMap<String, String> account;
@@ -54,6 +65,7 @@ public class Server {
 	private final static String line = System.lineSeparator();
 
 	Integer accountNo = 0;
+	Integer groupNo = 0;
 
 	/*
 	 * 从服务器本地指定的文件导入指定的账号名 与密码(每行输入格式为: 账号名 密码 ) 初始化其他数组
@@ -100,6 +112,27 @@ public class Server {
 
 		accountNo = account.size() - 1;
 
+		db.closeResultSet(rs);
+		db.clean();
+		
+		db = new DBControl(true);
+		
+		sql = "select MAX(group_id) as a from groups";
+		db.getStatement(sql);
+		rs = db.query();
+		
+		try {
+			if (rs == null)
+				groupNo = 0;
+			else {
+				while (rs.next()) {
+					groupNo = rs.getInt("a");
+				}
+			}
+		}catch (SQLException e1) {
+			e1.printStackTrace();
+		}
+		
 		db.closeResultSet(rs);
 		db.clean();
 	}
@@ -189,7 +222,42 @@ public class Server {
 	 * 
 	 */
 	protected String get_group(int id){
-		return null;
+		String result = null;
+		DBControl db = new DBControl(true);
+		
+		String sql = "select a.group_id as id, b.group_name as name "
+				+"from group_member as a,groups as b where a.member_id=? and a.group_id=b.group_id";
+		PreparedStatement stmt = db.getStatement(sql);
+		try {
+			stmt.setInt(1, id);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		stmt = null;
+		
+		ResultSet rs = db.query();
+		try {
+			if (rs != null){
+				result = "";
+				boolean start = true;
+				while (rs.next()) {
+					int groupID = rs.getInt("id");
+					String name = rs.getString("name");
+					if (!start)
+						result += " ";
+					result += (groupID + " " + name);
+					start = false;
+				}
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		db.closeResultSet(rs);
+		db.clean();
+		//System.out.println("Result "+result);
+		return result;
 	}
 
 	protected String get_friend(int id) {
@@ -367,7 +435,6 @@ public class Server {
 
 	/*
 	 * 返回对应accountID的server进程类.
-	 * 
 	 */
 	protected ServerThread get_accountServer(String accountID) {
 		Integer id=Integer.parseInt(accountID);
@@ -392,6 +459,261 @@ public class Server {
 		accountServer.remove(name);
 	}
 	
+	/*
+	 * 创建群聊
+	 */
+	protected int create_group(String from, String[] to, String groupName){
+		DBControl db = new DBControl(true);
+		
+		String sql = "INSERT INTO groups(group_id,group_name,owner_id) VALUES(?,?,?)";
+		PreparedStatement stmt = db.getStatement(sql);
+		
+		Integer fromId = Integer.parseInt(from);
+		int newGroupId=0;
+		
+		synchronized(groupNo){
+			groupNo += 1;
+			newGroupId = groupNo;
+		}
+		
+		try {
+			stmt.setInt(1, newGroupId);
+			stmt.setString(2, groupName);
+			stmt.setInt(3, fromId);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		stmt = null;
+		
+		db.update();
+		db.clean();
+		db = null;
+		
+		//接下来更新群成员
+		db = new DBControl(true);
+		
+		sql = "INSERT INTO group_member(group_id,member_id) VALUES";
+		
+		boolean start = true;
+		for (String member : to){
+			if (member=="")continue;
+			if (!start) sql += ",";
+			sql += "(?,?)";
+			start = false;
+		}
+		
+		stmt = db.getStatement(sql);
+		
+		int nowPosition = 1;
+		try {
+			for (String member : to){
+				if (member=="")continue;
+				Integer memberId = Integer.parseInt(member);
+				stmt.setInt(nowPosition, newGroupId);
+				nowPosition += 1;
+				stmt.setInt(nowPosition, memberId);
+				nowPosition += 1;
+			}
+		}catch (SQLException e) {
+			e.printStackTrace();
+			db.clean();
+			return -1;
+		}catch (Exception e) {
+			e.printStackTrace();
+			db.clean();
+			return -1;
+		}
+		stmt = null;
+		
+		db.update();
+		db.clean();
+		
+		return newGroupId;
+	}
+	
+	protected int delete_group(String groupId){
+		DBControl db = new DBControl(true);
+		
+		Integer id = Integer.parseInt(groupId);
+		
+		String sql = "delete from group_member where group_id=?";
+		PreparedStatement stmt = db.getStatement(sql);
+		
+		try {
+			stmt.setInt(1, id);
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return -1;
+		}
+		
+		stmt = null;
+		
+		db.update();
+		db.clean();
+		db = new DBControl(true);
+		sql = "delete from groups where group_id=?";
+		stmt = db.getStatement(sql);
+		
+		try {
+			stmt.setInt(1, id);
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return -1;
+		}
+		
+		stmt = null;
+		
+		db.update();
+		db.clean();
+		return 0;
+	}
+	
+	/*
+	 * return 0 表示插入成功
+	 * return 1 表示已经存在好友
+	 * return -1 表示发生异常错误插入失败
+	 */
+	protected int insert_group_member(String to, String groupID){
+		DBControl db = new DBControl(true);
+		
+		Integer id = Integer.parseInt(groupID);
+		Integer toID = Integer.parseInt(to);
+		
+		String sql="select * from group_member where group_id=? and member_id=?";
+		PreparedStatement stmt = db.getStatement(sql);
+		
+		try {
+			stmt.setInt(1, id);
+			stmt.setInt(2, toID);
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return -1;
+		}
+		stmt = null;
+		
+		ResultSet rs=db.query();
+		try {
+			if (rs!=null&&rs.next())
+				return 1;
+		} catch (SQLException e1) {
+			e1.printStackTrace();
+			//return -1;
+		}
+		
+		db.closeResultSet(rs);
+		db.clean();
+		
+		db = new DBControl(true);
+		
+		sql = "insert into group_member VALUES(?,?)";
+		stmt = db.getStatement(sql);
+		
+		try {
+			stmt.setInt(1, id);
+			stmt.setInt(2, toID);
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return -1;
+		}
+		
+		stmt = null;
+		db.update();
+		db.clean();
+		
+		return 0;
+	}
+	
+	protected int delete_group_member(String to, String groupID){
+		DBControl db = new DBControl(true);
+		
+		Integer id = Integer.parseInt(groupID);
+		Integer toID = Integer.parseInt(to);
+		
+		String sql="select * from group_member where group_id=? and member_id=?";
+		PreparedStatement stmt = db.getStatement(sql);
+		
+		try {
+			stmt.setInt(1, id);
+			stmt.setInt(2, toID);
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return -1;
+		}
+		stmt = null;
+		
+		ResultSet rs=db.query();
+		try {
+			if (rs==null||rs.next()==false)
+				return 1;
+		} catch (SQLException e1) {
+			e1.printStackTrace();
+			//return -1;
+		}
+		
+		db.closeResultSet(rs);
+		db.clean();
+		
+		db = new DBControl(true);
+		
+		sql = "delete from group_member where group_id=? and member_id=?";
+		stmt = db.getStatement(sql);
+		
+		try {
+			stmt.setInt(1, id);
+			stmt.setInt(2, toID);
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return -1;
+		}
+		
+		stmt = null;
+		db.update();
+		db.clean();
+		
+		return 0;
+	}
+	
+	protected void set_image(String id, String base64String){
+		BufferedImage tmp = ImageControl.base64StringToImg(base64String);
+		
+		File filePath = new File("img");
+		if (!filePath.exists())
+			filePath.mkdir();
+		
+		try {
+			ImageIO.write(tmp, "jpg", new File("img"+separator+id+".jpg"));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/*
+	 * 返回null表示读取失败
+	 */
+	protected String get_image(String id){
+		BufferedImage tmp = null;
+		try {
+			tmp = ImageIO.read(new FileInputStream(id+".jpg"));
+		} catch (IOException e) {
+			e.printStackTrace();
+			return null;
+		}
+		return ImageControl.imgToBase64String(tmp);
+	}
+	
+	protected Integer get_name2id(String name){
+		return account2id.get(name);
+	}
+	
+	protected String get_id2name(Integer id){
+		return id2account.get(id);
+	}
+	
+	protected String get_id2name(String id){
+		Integer ID = Integer.parseInt(id);
+		return id2account.get(ID);
+	}
+	
 	private Server() {
 		load_Account();
 
@@ -401,7 +723,7 @@ public class Server {
 
 			int count = 0;
 			System.out.println("server to start");
-
+		
 			while (true) {
 				// a new client connect in
 				socket = serversocket.accept();

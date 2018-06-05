@@ -178,7 +178,7 @@ public class ServerThread extends Thread {
 				}
 				/*
 				 * 聊天信息包
-				 * type==6
+				 * type==8
 				 * from 信息来自的用户
 				 * to 信息去向的用户/群
 				 * msg 聊天内容
@@ -222,7 +222,7 @@ public class ServerThread extends Thread {
 				 * 创建群聊
 				 * type==11
 				 * from 群主
-				 * to 群成员1+群成员2+……
+				 * to 群成员1+群成员2+……(不包含群主)
 				 * msg:群名称
 				 */
 				if(type == 11) {
@@ -231,6 +231,7 @@ public class ServerThread extends Thread {
 						to_member.addElement(t);
 					}
 					//调用mainServer的创建群聊的方法
+					
 					
 					broad = new BroadCastThread(mainServer, to_member, msg);
 					broad.start();
@@ -252,6 +253,18 @@ public class ServerThread extends Thread {
 				 */
 				if(type == 13) {
 					//调用mainServer的向群聊中加成员的方法
+				}
+				if(type == 14) {
+					//调用mainServer的从群中去除某成员的方法
+				}
+				if(type == 15) {
+					//调用mainServer的从群中去除某成员的方法
+				}
+				if(type == 16) {
+					//调用mainServer的get_group方法得到群列表 
+				}
+				if(type == 17) {
+					
 				}
 				/*
 				 * 用户登出

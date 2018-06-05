@@ -132,12 +132,12 @@ public class DBControl {
 }
 
 /*
- * Ïà¹ØDB¶¨ÒåÈçÏÂ£º
+ * ç›¸å…³DBå®šä¹‰å¦‚ä¸‹ï¼š
  * 
- * 1£©ÕË»§£¬id,ÃÜÂëÊı¾İ¿â±í£º create table account( id int not null unique, name
+ * 1ï¼‰è´¦æˆ·ï¼Œid,å¯†ç æ•°æ®åº“è¡¨ï¼š create table account( id int not null unique, name
  * varchar(45) not null unique, password varchar(100) not null);
  * 
- * 2) ÅóÓÑÊı¾İ¿â±í create table friend( id int not null, friend_id int no FOREIGN KEY
+ * 2) æœ‹å‹æ•°æ®åº“è¡¨ create table friend( id int not null, friend_id int no FOREIGN KEY
  * (id) REFERENCES account(id), FOREIGN KEY (friend_id) REFERENCES account(id));
  * 
  */

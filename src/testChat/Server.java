@@ -54,6 +54,7 @@ public class Server {
 	private final static String line = System.lineSeparator();
 
 	Integer accountNo = 0;
+	Integer groupNo = 0;
 
 	/*
 	 * 从服务器本地指定的文件导入指定的账号名 与密码(每行输入格式为: 账号名 密码 ) 初始化其他数组
@@ -100,6 +101,27 @@ public class Server {
 
 		accountNo = account.size() - 1;
 
+		db.closeResultSet(rs);
+		db.clean();
+		
+		db = new DBControl(true);
+		
+		sql = "select MAX(group_id) as a from groups";
+		db.getStatement(sql);
+		rs = db.query();
+		
+		try {
+			if (rs == null)
+				groupNo = 0;
+			else {
+				while (rs.next()) {
+					groupNo = rs.getInt("a");
+				}
+			}
+		}catch (SQLException e1) {
+			e1.printStackTrace();
+		}
+		
 		db.closeResultSet(rs);
 		db.clean();
 	}
@@ -390,6 +412,82 @@ public class Server {
 	protected void delete_accountServer(String name){
 		System.out.println("account "+name+" log off");
 		accountServer.remove(name);
+	}
+	
+	/*
+	 * 创建群聊
+	 */
+	protected int create_group(String from, String[] to, String groupName){
+		DBControl db = new DBControl(true);
+		
+		String sql = "INSERT INTO groups(group_id,group_name,owner_id) VALUES(?,?,?)";
+		PreparedStatement stmt = db.getStatement(sql);
+		
+		Integer fromId = Integer.parseInt(from);
+		int newGroupId=0;
+		
+		synchronized(groupNo){
+			groupNo += 1;
+			newGroupId = groupNo;
+		}
+		
+		try {
+			stmt.setInt(1, newGroupId);
+			stmt.setString(2, groupName);
+			stmt.setInt(3, fromId);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		stmt = null;
+		
+		db.update();
+		db.clean();
+		db = null;
+		
+		//接下来更新群成员
+		db = new DBControl(true);
+		
+		sql = "INSERT INTO group_member(group_id,member_id) VALUES";
+		
+		boolean start = true;
+		for (String member : to){
+			if (member=="")continue;
+			if (!start) sql += ",";
+			sql += "(?,?)";
+			start = false;
+		}
+		
+		stmt = db.getStatement(sql);
+		
+		int nowPosition = 1;
+		try {
+			for (String member : to){
+				if (member=="")continue;
+				Integer memberId = Integer.parseInt(member);
+				stmt.setInt(nowPosition, newGroupId);
+				nowPosition += 1;
+				stmt.setInt(nowPosition, memberId);
+				nowPosition += 1;
+			}
+		}catch (SQLException e) {
+			e.printStackTrace();
+			db.clean();
+			return -1;
+		}catch (Exception e) {
+			e.printStackTrace();
+			db.clean();
+			return -1;
+		}
+		stmt = null;
+		
+		db.update();
+		db.clean();
+		
+		return newGroupId;
+	}
+	
+	protected void delete_group(){
+		
 	}
 	
 	private Server() {

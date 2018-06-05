@@ -701,6 +701,19 @@ public class Server {
 		return ImageControl.imgToBase64String(tmp);
 	}
 	
+	protected Integer get_name2id(String name){
+		return account2id.get(name);
+	}
+	
+	protected String get_id2name(Integer id){
+		return id2account.get(id);
+	}
+	
+	protected String get_id2name(String id){
+		Integer ID = Integer.parseInt(id);
+		return id2account.get(ID);
+	}
+	
 	private Server() {
 		load_Account();
 

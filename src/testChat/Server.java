@@ -223,7 +223,42 @@ public class Server {
 	 * 
 	 */
 	protected String get_group(int id){
-		return null;
+		String result = null;
+		DBControl db = new DBControl(true);
+		
+		String sql = "select a.group_id as id, b.group_name as name "
+				+"from group_member as a,groups as b where a.member_id=? and a.group_id=b.group_id";
+		PreparedStatement stmt = db.getStatement(sql);
+		try {
+			stmt.setInt(1, id);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		stmt = null;
+		
+		ResultSet rs = db.query();
+		try {
+			if (rs != null){
+				result = "";
+				boolean start = true;
+				while (rs.next()) {
+					int groupID = rs.getInt("id");
+					String name = rs.getString("name");
+					if (!start)
+						result += " ";
+					result += (groupID + " " + name);
+					start = false;
+				}
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		db.closeResultSet(rs);
+		db.clean();
+		System.out.println("Result "+result);
+		return result;
 	}
 
 	protected String get_friend(int id) {

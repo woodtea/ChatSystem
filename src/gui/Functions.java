@@ -27,6 +27,19 @@ public class Functions {
 	}
 	
 	/**
+	 * @param id 聊天id
+	 * @param isGroup 聊天是否是群聊
+	 * @param text	聊天信息
+	 * @param info	发送错误时填充，可以有“您已被踢出群聊”、“网络不佳，发送不成功”、“该用户不是你的好友”等等
+	 * @return 发送是否成功
+	 */
+	static boolean sendMsg(int id,boolean isGroup,String text,String info)
+	{
+		//TODO
+		return true;
+	}
+	
+	/**
 	 * @param usrName 用户名
 	 * @param password 密码
 	 * @return 登录操作是否成功
@@ -82,10 +95,7 @@ public class Functions {
 		return false;
 	}
 	
-<<<<<<< HEAD
-	
-	static class user
-=======
+
 	static ConcurrentHashMap<Integer, user> getFriendList(){
 		return client.getFriendList();
 	}
@@ -95,7 +105,6 @@ public class Functions {
 	}
 	
 	public static class user
->>>>>>> origin/master
 	{
 		String name;
 		int id;

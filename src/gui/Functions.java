@@ -2,6 +2,7 @@ package gui;
 
 import testChat.Client;
 
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.swing.ImageIcon;
@@ -17,13 +18,79 @@ public class Functions {
 	static user hostUser = new user(1);
 	static Client client;
 	
-	static void setClient(Client new_client) {
+	static int messageNumber = 0;
+	static HashMap<Integer, HashMap<Integer, HashMap<Integer, String>>> replyList;
+	
+	public static final String registerSuccess = "成功注册！";
+	public static final String signInSuccess = "成功登陆！";
+		
+	public static final String success = "发送成功！";
+	public static final String timeOut = "发送超时！";
+	public static final String notFriend = "对方不是您的好友！";
+	public static final String notGroupMember = "您已不是该群的成员！";
+	
+	public static void setClient(Client new_client) {
 		client = new_client;
 	}
 	
-	static void signOff() {
+	public static void signOff() {
 		//TODO 通知后端结束进程
 		client.signOff();
+	}
+	
+	/**
+	 * @param from 发送者自己的id
+	 * @param to 发送对象的id（可能是用户id，也可能是群id）
+	 * @param isGroup 聊天是否是群聊
+	 * @param text	聊天信息
+	 * @return 发送是否成功
+	 */
+	public static String sendMsg(int from, int to, boolean isGroup, String text)
+	{
+		//TODO
+		if(! replyList.containsKey(from)) 
+			replyList.put(from, new HashMap<Integer, HashMap<Integer, String>>());
+		if(! replyList.get(from).containsKey(to))
+			replyList.get(from).put(to, new HashMap<Integer, String>());
+		int tmpNumber = messageNumber;
+		messageNumber += 1;
+		
+		replyList.get(from).get(to).put(tmpNumber, "wait");
+		client.sendMessage(from, to, tmpNumber, isGroup, text);
+		
+		waitReply(from, to, tmpNumber);
+		while(replyList.get(from).get(to).get(tmpNumber).equals("wait")) {
+			//等待reply,或超时
+		}
+		String reply = replyList.get(from).get(to).get(tmpNumber);
+		replyList.get(from).get(to).remove(tmpNumber);
+		
+		return reply;
+	}
+	
+	public static void waitReply(int from, int to, int messageNumber) {
+		Timer timer = new Timer();
+		timer.schedule(new TimerTask() {
+			public void run() {
+				if(! replyList.containsKey(from))
+					return;
+				if(! replyList.get(from).containsKey(to))
+					return;
+				if(! replyList.get(from).get(to).containsKey(messageNumber))
+					return;
+				replyList.get(from).get(to).put(messageNumber, timeOut);
+			}
+		} , 3000);
+	}
+	
+	public static void replyMsg(int from, int to, boolean isGroup, int messageNumber, String reply) {
+		if(! replyList.containsKey(from))
+			return;
+		if(! replyList.get(from).containsKey(to))
+			return;
+		if(! replyList.get(from).get(to).containsKey(messageNumber))
+			return;
+		replyList.get(from).get(to).put(messageNumber, reply);
 	}
 	
 	/**
@@ -34,10 +101,10 @@ public class Functions {
 	 * 			hostUser:用户		
 	 * 		
 	 */
-	static boolean log(String usrName,char[] password)
+	public static boolean log(String usrName,char[] password)
 	{
 		//TODO
-		String info = client.signUp(usrName, new String(password));
+		String info = client.signIn(usrName, new String(password));
 		if(info.indexOf("_") != -1) {
 			int type = Integer.parseInt(info.substring(0, info.indexOf("_")));
 			if(type == 5) {
@@ -45,7 +112,7 @@ public class Functions {
 				return false;
 			}
 			else {
-				inform = "log in successfully.";
+				inform = signInSuccess;
 				return true;
 			}
 		}
@@ -62,7 +129,7 @@ public class Functions {
 	 * 			inform:注册失败原因
 	 * 			
 	 */
-	static boolean register(String usrName,char[] password)
+	public static boolean register(String usrName,char[] password)
 	{
 		//TODO
 		String info = client.signUp(usrName, new String(password));
@@ -73,7 +140,7 @@ public class Functions {
 				return false;
 			}
 			else {
-				inform = "register successfully.";
+				inform = registerSuccess;
 				return true;
 			}
 		}
@@ -82,11 +149,12 @@ public class Functions {
 		return false;
 	}
 	
-	static ConcurrentHashMap<Integer, user> getFriendList(){
+
+	public static ConcurrentHashMap<Integer, user> getFriendList(){
 		return client.getFriendList();
 	}
 	
-	static ConcurrentHashMap<Integer, group> getGroupList(){
+	public static ConcurrentHashMap<Integer, group> getGroupList(){
 		return client.getGroupList();
 	}
 	
@@ -119,11 +187,12 @@ public class Functions {
 	
 	//以下为UI需实现的方法
 	/**
+	 * @param profile 
 	 * @param friend_name:发送信息者的用户名（可能是对方，也可能是自己）
 	 * @param time:发从消息的时间,格式为year-month-date hour:minute:second
 	 * @param info:发送的信息
 	 */
-	public static void showFriendMessage(String friend_name, String time, String info) {
+	public static void showFriendMessage(String friend_name, ImageIcon profile, String time, String info) {
 		//TODO 这个函数显示一对一聊天信息
 		
 	}
@@ -167,5 +236,11 @@ public class Functions {
 	public static void updateGroupList() {
 		//TODO 对群列表进行更新，当被别人拉进一个群中，或被群主踢出群时进行调用
 		//TODO 聊天列表中不会进行对新群的显示或旧群的删除，只是对群列表进行更新
+	}
+
+	public static void showGroupMessage(String group_name, String friend_name, ImageIcon profile, String time,
+			String info) {
+		// TODO Auto-generated method stub
+		
 	}
 }

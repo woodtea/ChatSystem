@@ -54,6 +54,26 @@ public class ServerThread extends Thread {
 		}
 	}
 	
+	public boolean isFriend(Integer id1, Integer id2) {
+		String tmp = mainServer.get_friend(id1);
+		if(tmp != null) {
+			String[] list = tmp.trim().split(" ");
+			for(String i : list) {
+				if(i.equals(id2.toString()))
+					return true;
+			}
+		}
+		return false;
+	}
+	
+	public boolean isGroupMember(String user_id, String group_id) {
+		Vector<String> member = mainServer.get_groupMember(group_id);
+		if(member.contains(user_id))
+			return true;
+		else
+			return false;
+	}
+	
 	/*
 	 * 先验证登录确认身份，或者注册新用户.
 	 * 
@@ -157,16 +177,30 @@ public class ServerThread extends Thread {
 				/*
 				 * 加好友请求
 				 * type==6
+				 * from:发出好友请求的用户id
+				 * to:请求的好友的name
 				 */
 				if (type==6){
-					to_member.addElement(to);
-					broad = new BroadCastThread(mainServer, to_member, msg);
-					broad.start();
+					String to_id;
+					if(mainServer.get_name2id(to) != null) {
+						//请求的好友存在，则得到其id，将好友请求发送给他
+						to_id = mainServer.get_name2id(to).toString();
+						to_member.addElement(to_id);
+						broad = new BroadCastThread(mainServer, to_member, msg);
+						broad.start();
+					}
+					else {
+						//请求的好友不存在，直接给from发送加好友失败信息
+						to_member.addElement(from);
+						Message new_msg = new Message(18,"",from,false,"请求的好友不存在！");
+						broad = new BroadCastThread(mainServer, to_member, new_msg);
+						broad.start();
+					}
 				}
 				/*
 				 * 好友请求回复
 				 * type==7
-				 * msg 1:同意好友请求, 0:拒绝好友请求
+				 * msg: 1:同意好友请求, 0:好友请求被拒绝
 				 */
 				if (type==7){
 					if (info.equals("1")) {
@@ -185,17 +219,55 @@ public class ServerThread extends Thread {
 				 */
 				if (type==8){
 					Message new_msg=null;
+					// 发送信息者的头像
+					String profile = "<profile>" + mainServer.get_image(to) + "</profile>";
 					if(isgroup) {
-						to_member = mainServer.get_groupMember(to);
-						to_member.removeElement(from);
-						new_msg = new Message(type, from+"_"+to, to, isgroup, info);
+						if(isGroupMember(from, to)) {
+							//发消息者在群中
+							to_member = mainServer.get_groupMember(to);
+							to_member.removeElement(from);
+							new_msg = new Message(type, from+"_"+to+profile, to, isgroup, info);
+							broad = new BroadCastThread(mainServer, to_member, new_msg);
+							broad.start();
+							
+							Vector<String> reply_member = new Vector<String>();
+							reply_member.addElement(from);
+							Message reply_msg = new Message(17, "", from, false, "发送成功！");
+							BroadCastThread reply_broad = new BroadCastThread(mainServer, reply_member, reply_msg);
+							reply_broad.start();
+						}
+						else {
+							//发消息者不在群中，发送失败
+							Vector<String> reply_member = new Vector<String>();
+							reply_member.addElement(from);
+							Message reply_msg = new Message(17, "", from, false, "您已不是该群的成员！");
+							BroadCastThread reply_broad = new BroadCastThread(mainServer, reply_member, reply_msg);
+							reply_broad.start();
+						}
 					}
 					else{
-						to_member.addElement(to);
-						new_msg=msg;
+						if(isFriend(Integer.parseInt(from), Integer.parseInt(to))) {
+							//两人是好友
+							to_member.addElement(to);
+							new_msg= new Message(type, from+profile, to, isgroup, info);
+							broad = new BroadCastThread(mainServer, to_member, new_msg);
+							broad.start();
+							
+							Vector<String> reply_member = new Vector<String>();
+							reply_member.addElement(from);
+							Message reply_msg = new Message(17, "", from, false, "发送成功！");
+							BroadCastThread reply_broad = new BroadCastThread(mainServer, reply_member, reply_msg);
+							reply_broad.start();
+						}
+						else {
+							//两人不是好友，发送失败
+							Vector<String> reply_member = new Vector<String>();
+							reply_member.addElement(from);
+							Message reply_msg = new Message(17, "", from, false, "对方不是您的好友！");
+							BroadCastThread reply_broad = new BroadCastThread(mainServer, reply_member, reply_msg);
+							reply_broad.start();
+						}
 					}
-					broad = new BroadCastThread(mainServer, to_member, new_msg);
-					broad.start();
 				}
 				/*
 				 * 请求好友列表
@@ -222,46 +294,124 @@ public class ServerThread extends Thread {
 				 * 创建群聊
 				 * type==11
 				 * from 群主
-				 * to 群成员1+群成员2+……(不包含群主)
-				 * msg:群名称
+				 * to 群成员1+群成员2+……(包含群主)
+				 * msg:群名称+新群id
 				 */
 				if(type == 11) {
 					String tmp[] = to.split("_");
 					for(String t : tmp) {
 						to_member.addElement(t);
 					}
-					//调用mainServer的创建群聊的方法
-					
-					
-					broad = new BroadCastThread(mainServer, to_member, msg);
+					//调用mainServer的创建群聊的方法,得到新创建的群的id
+					Integer new_group_id = mainServer.create_group(from, tmp, info);
+					Message new_msg=new Message(11,from,to,false,info+"_"+new_group_id.toString());
+					//告知群成员，更新群列表
+					broad = new BroadCastThread(mainServer, to_member, new_msg);
 					broad.start();
 				}
 				/*
 				 * 解散群聊
 				 * type==12
 				 * from 解散群聊的用户,必须是群主
-				 * to 解散的群聊
+				 * to 解散的群聊id
 				 */
 				if(type == 12) {
+					//告知群成员，更新群列表
+					to_member = mainServer.get_groupMember(to);
 					//调用mainServer的解散群聊的方法
+					int delete_result = mainServer.delete_group(to);
+					if(delete_result == 0) {
+						broad = new BroadCastThread(mainServer, to_member, msg);
+						broad.start();
+					}
+					else {
+						to_member = new Vector<String>();
+						to_member.addElement(from);
+						Message new_msg = new Message(18,"",from,false,"删除群聊失败！");
+						broad = new BroadCastThread(mainServer, to_member, new_msg);
+						broad.start();
+					}
 				}
 				/*
 				 * 邀请好友进群
 				 * type==13
 				 * from 发出邀请的用户
-				 * to 邀请的对象+邀请其加入的群
+				 * to 邀请的用户+邀请其加入的群id
 				 */
 				if(type == 13) {
 					//调用mainServer的向群聊中加成员的方法
+					int insert_result = mainServer.insert_group_member(to.split("_")[0], to.split("_")[1]);
+					if(insert_result == 0) {
+						to_member.addElement(to.split("_")[0]);
+						Message new_msg = new Message(type, from, to, false, "");
+						broad = new BroadCastThread(mainServer, to_member, new_msg);
+						broad.start();
+					}
+					else {
+						to_member.addElement(from);
+						Message new_msg = new Message(18,"",from,false,"拉好友进群失败！");
+						broad = new BroadCastThread(mainServer, to_member, new_msg);
+						broad.start();
+					}
 				}
+				/*
+				 * 邀请好友进群
+				 * type==14
+				 * from 退群的用户
+				 * to 退出的群id
+				 */
 				if(type == 14) {
 					//调用mainServer的从群中去除某成员的方法
+					int insert_result = mainServer.delete_group_member(from, to);
+					if(insert_result == 0) {
+						to_member.addElement(from);
+						Message new_msg = new Message(type, from, to, false, "");
+						broad = new BroadCastThread(mainServer, to_member, new_msg);
+						broad.start();
+					}
+					else {
+						to_member.addElement(from);
+						Message new_msg = new Message(18,"",from,false,"退群失败！");
+						broad = new BroadCastThread(mainServer, to_member, new_msg);
+						broad.start();
+					}
 				}
+				/*
+				 * 邀请好友进群
+				 * type==15
+				 * from 群主
+				 * to 移除的用户+移除的群id
+				 */
 				if(type == 15) {
 					//调用mainServer的从群中去除某成员的方法
+					int insert_result = mainServer.delete_group_member(to.split("_")[0], to.split("_")[1]);
+					if(insert_result == 0) {
+						to_member.addElement(to.split("_")[0]);
+						Message new_msg = new Message(type, from, to, false, "");
+						broad = new BroadCastThread(mainServer, to_member, new_msg);
+						broad.start();
+					}
+					else {
+						to_member.addElement(from);
+						Message new_msg = new Message(18,"",from,false,"移除群成员失败！");
+						broad = new BroadCastThread(mainServer, to_member, new_msg);
+						broad.start();
+					}
 				}
+				/*
+				 * 请求群列表
+				 * type==16
+				 */
 				if(type == 16) {
 					//调用mainServer的get_group方法得到群列表 
+					int id=Integer.parseInt(from);
+					String tmp=mainServer.get_group(id),result = "";
+					if(tmp != null)
+						result += tmp;
+					Message new_msg=new Message(16,"",from,false,result);
+					to_member.addElement(from);
+					broad = new BroadCastThread(mainServer, to_member, new_msg);
+					broad.start();
 				}
 				if(type == 17) {
 					

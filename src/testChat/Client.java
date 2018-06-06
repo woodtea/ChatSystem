@@ -1,7 +1,6 @@
 package testChat;
 
 import gui.Functions;
-import gui.Functions.user;
 
 import java.io.*;
 import java.net.*;
@@ -9,7 +8,9 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class Client {
+import javax.swing.ImageIcon;
+
+public class Client extends Thread {
 	
 	class RecieveThread extends Thread {
 		ObjectInputStream ois;
@@ -39,24 +40,18 @@ public class Client {
 				}
 				
 				if (type == 8) {
-					/* 测试用代码
-					int fromid=Integer.parseInt(from);
-					if (id2name.containsKey(fromid))
-						System.out.println("("+id2name.get(fromid)+") "+info);
-					else
-						System.out.println("( id: "+fromid+" ) "+info);
-					*/
-					
-					SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//设置日期格式
+					SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");	//设置日期格式
 					String time = df.format(new Date());
 					if(isgroup) {	//是群聊
 						String group_name = group_id2name.get(Integer.parseInt(from.split("_")[1]));
 						String friend_name = id2name.get(Integer.parseInt(from.split("_")[0]));
-						Functions.showGroupMessage(group_name, friend_name, time, info);
+						ImageIcon profile = null;
+						Functions.showGroupMessage(group_name, friend_name, profile, time, info);
 					}
 					else {	//不是群聊
 						String friend_name = id2name.get(Integer.parseInt(from));
-						Functions.showFriendMessage(friend_name, time, info);
+						ImageIcon profile = null;
+						Functions.showFriendMessage(friend_name, profile, time, info);
 					}
 				}
 				
@@ -82,6 +77,15 @@ public class Client {
 				if(type == 15) {
 					
 				}
+				if(type == 16) {
+					parseGroup(info);
+					
+				}
+				if(type == 17) {
+					int messageNumber = Integer.parseInt(info.substring(0, info.indexOf("_")));
+					String reply = info.substring(info.indexOf("_") + 1, info.length());
+					Functions.replyMsg(Integer.parseInt(from), Integer.parseInt(to), isgroup, messageNumber, reply);
+				}
 				
 				if (type != 8)
 				System.out.println(
@@ -103,20 +107,20 @@ public class Client {
 	private OutputStream os = null;
 	private PrintWriter pw = null;
 	private ObjectOutputStream oos = null;
-	
+	/*测试用代码
 	private boolean inChatRoom=false;
 	private String defaultDes="";
-
+	*/
 	private InputStream is = null;
 	private BufferedReader br = null;
 	private ObjectInputStream ois = null;
 	
 	private Socket socket = null;
 	
-	public String getName() {
+	public String get_name() {
 		return name;
 	}
-	public Integer getId() {
+	public Integer get_id() {
 		return id;
 	}
 	public ConcurrentHashMap<String, Integer> getName2id() {
@@ -132,14 +136,16 @@ public class Client {
 		return group_id2name;
 	}
 	
-	private Client() throws Exception {
-
+	private Client() {
+		/*测试用代码
 		Scanner sc = null;
-		
+		*/
 		name2id = new ConcurrentHashMap<String, Integer>();
 		id2name = new ConcurrentHashMap<Integer, String>();
 		requestFriend = new HashMap<Integer, Boolean>();
-
+	}
+	
+	public void run(){
 		try {
 			String host = InetAddress.getLocalHost().getHostAddress();
 			System.out.println(host);
@@ -244,22 +250,25 @@ public class Client {
 		} catch (IOException e) {
 			e.printStackTrace();
 		} finally {
-			sc.close();
-			if (ois != null)
-				ois.close();
-			if (oos != null)
-				oos.close();
-			if (br != null)
-				br.close();
-			if (is != null)
-				is.close();
-			if (pw != null)
-				pw.close();
-			if (os != null)
-				os.close();
-			if (socket != null)
-				socket.close();
-			System.out.println("end!");
+			try {
+				if (ois != null)
+					ois.close();
+				if (oos != null)
+					oos.close();
+				if (br != null)
+					br.close();
+				if (is != null)
+					is.close();
+				if (pw != null)
+					pw.close();
+				if (os != null)
+					os.close();
+				if (socket != null)
+					socket.close();
+				System.out.println("end!");
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 	
@@ -284,8 +293,7 @@ public class Client {
 			if(type == 4) {
 				alreadySignIn = true;
 				name = user_name;
-				parseInfo(info);	//解析好友列表
-				//解析群列表
+				parseInfo(info);	//解析好友列表,群列表
 			}
 			return type + "_" + info;
 		}
@@ -314,9 +322,15 @@ public class Client {
 		return list;
 	}
 	
+	public void sendMessage(Integer from, Integer to, Integer messageNumber, boolean isGroup, String info) {
+		IOControl.print(oos, new Message(8, from.toString(), to.toString(), isGroup, messageNumber.toString()+"_"+info));
+	}
+	
+	
 	private void parseInfo(String info) {
 		String tmp[] = info.split("\n");
 		parseFriend(tmp[0]);
+		parseGroup(tmp[1]);
 	}
 	
 	private void parseFriend(String info){
@@ -332,7 +346,14 @@ public class Client {
 	}
 	
 	private void parseGroup(String info) {
-		
+		group_name2id.clear();
+		group_id2name.clear();
+		String gru[] = info.split(" ");
+		assert gru.length % 2 == 0;
+		for(int i=0;i<gru.length;i+=2) {
+			name2id.put(gru[i+1], Integer.parseInt(gru[i]));
+			id2name.put(Integer.parseInt(gru[i]), gru[i+1]);
+		}
 	}
 	
 	private boolean can_send(int type, int id, String msg){
@@ -395,8 +416,8 @@ public class Client {
 			System.out.println(e.getValue()+" "+e.getKey());
 	}
 
-	@SuppressWarnings("unused")
 	public static void main(String[] args) throws Exception {
 		Client myClient = new Client();
+		myClient.start();
 	}
 }

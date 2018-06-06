@@ -1,9 +1,9 @@
 package testChat;
 
+import gui.Functions;
 import java.io.*;
 import java.net.*;
 import java.util.*;
-import java.util.concurrent.ArrayBlockingQueue;
 
 class BroadCastThread extends Thread{
 	Server mainServer = null;
@@ -221,6 +221,8 @@ public class ServerThread extends Thread {
 					Message new_msg=null;
 					// 发送信息者的头像
 					String profile = "<profile>" + mainServer.get_image(to) + "</profile>";
+					String messageNumber = info.substring(0, info.indexOf("_"));
+					info = info.substring(info.indexOf("_") + 1, info.length());
 					if(isgroup) {
 						if(isGroupMember(from, to)) {
 							//发消息者在群中
@@ -232,7 +234,7 @@ public class ServerThread extends Thread {
 							
 							Vector<String> reply_member = new Vector<String>();
 							reply_member.addElement(from);
-							Message reply_msg = new Message(17, "", from, false, "发送成功！");
+							Message reply_msg = new Message(17, from, to, false, messageNumber + "_" + Functions.success);
 							BroadCastThread reply_broad = new BroadCastThread(mainServer, reply_member, reply_msg);
 							reply_broad.start();
 						}
@@ -240,7 +242,8 @@ public class ServerThread extends Thread {
 							//发消息者不在群中，发送失败
 							Vector<String> reply_member = new Vector<String>();
 							reply_member.addElement(from);
-							Message reply_msg = new Message(17, "", from, false, "您已不是该群的成员！");
+							Message reply_msg = new Message(17, from, to, false, 
+									messageNumber + "_" + Functions.notGroupMember);
 							BroadCastThread reply_broad = new BroadCastThread(mainServer, reply_member, reply_msg);
 							reply_broad.start();
 						}
@@ -255,7 +258,7 @@ public class ServerThread extends Thread {
 							
 							Vector<String> reply_member = new Vector<String>();
 							reply_member.addElement(from);
-							Message reply_msg = new Message(17, "", from, false, "发送成功！");
+							Message reply_msg = new Message(17, from, to, false, messageNumber + "_" + Functions.success);
 							BroadCastThread reply_broad = new BroadCastThread(mainServer, reply_member, reply_msg);
 							reply_broad.start();
 						}
@@ -263,7 +266,7 @@ public class ServerThread extends Thread {
 							//两人不是好友，发送失败
 							Vector<String> reply_member = new Vector<String>();
 							reply_member.addElement(from);
-							Message reply_msg = new Message(17, "", from, false, "对方不是您的好友！");
+							Message reply_msg = new Message(17, from, to, false, messageNumber + "_" + Functions.notFriend);
 							BroadCastThread reply_broad = new BroadCastThread(mainServer, reply_member, reply_msg);
 							reply_broad.start();
 						}

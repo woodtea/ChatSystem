@@ -63,5 +63,5 @@ public class Message implements Serializable {
  * 14: 退群
  * 15: 群主踢人
  * 16: 请求群列表包
- * 17: ACK确认帧
+ * 17: 确认帧(发送成功/发送失败及原因)
  */

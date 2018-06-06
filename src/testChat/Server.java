@@ -147,13 +147,14 @@ public class Server {
 		if (account.containsKey(name) == true)
 			return "The account name already exists!";
 
+		String newPasswd = SecurityCipher.getSHA256Str(passwd);
 		int newAccountNo = 0;
 		synchronized (accountNo) {
 			accountNo += 1;
 			newAccountNo = accountNo;
 		}
 
-		account.put(name, passwd);
+		account.put(name, newPasswd);
 		account2id.put(name, newAccountNo);
 		id2account.put(newAccountNo, name);
 
@@ -165,7 +166,7 @@ public class Server {
 		try {
 			stmt.setInt(1, newAccountNo);
 			stmt.setString(2, name);
-			stmt.setString(3, passwd);
+			stmt.setString(3, newPasswd);
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
@@ -183,11 +184,13 @@ public class Server {
 	 * 
 	 */
 	protected String sign_in(String name, String passwd, ServerThread server) {
+		String newPasswd = SecurityCipher.getSHA256Str(passwd);
+		
 		if (account.containsKey(name) == false)
 			return "The account name doesn't exist!";
 		if (accountServer.containsKey(name) == true)
 			return "The account already sign in!";
-		if (account.get(name).equals(passwd) == false)
+		if (account.get(name).equals(newPasswd) == false)
 			return "wrong password!";
 		accountServer.put(name, server);
 		return null;
@@ -307,17 +310,20 @@ public class Server {
 	protected String modify_passwd(String name, String oldpasswd, String newpasswd) {
 		if (account.containsKey(name) == false)
 			return "The account name doesn't exists!";
-		if (account.get(name).equals(oldpasswd) == false)
+		String old = SecurityCipher.getSHA256Str(oldpasswd);
+		String newp = SecurityCipher.getSHA256Str(newpasswd);
+		
+		if (account.get(name).equals(old) == false)
 			return "Wrong old password!";
-		account.put(name, newpasswd);
+		account.put(name, newp);
 
 		DBControl db = new DBControl(true);
 		String sql = "UPDATE accout SET password=? where name=? and password=?";
 		PreparedStatement stmt = db.getStatement(sql);
 		try {
-			stmt.setString(1, newpasswd);
+			stmt.setString(1, newp);
 			stmt.setString(2, name);
-			stmt.setString(3, oldpasswd);
+			stmt.setString(3, old);
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
@@ -693,7 +699,7 @@ public class Server {
 	protected String get_image(String id){
 		BufferedImage tmp = null;
 		try {
-			tmp = ImageIO.read(new FileInputStream(id+".jpg"));
+			tmp = ImageIO.read(new FileInputStream("img"+separator+id+".jpg"));
 		} catch (IOException e) {
 			e.printStackTrace();
 			return null;

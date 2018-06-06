@@ -34,7 +34,7 @@ public class Message implements Serializable {
 	}
 
 	int get_type() {return type;}
-
+	
 	String get_from() {return from;}
 
 	String get_to() {return to;}
@@ -42,6 +42,7 @@ public class Message implements Serializable {
 	boolean get_isgroup() {return isgroup;}
 
 	String get_msg() {return msg;}
+	void set_msg(String msg) {this.msg = msg;}
 }
 
 /*

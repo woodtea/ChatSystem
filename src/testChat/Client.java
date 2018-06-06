@@ -40,6 +40,9 @@ public class Client extends Thread {
 				}
 				
 				if (type == 8) {
+					//type==8需要解密
+					info = SecurityCipher.get_receive(alice, info);
+					
 					SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");	//设置日期格式
 					String time = df.format(new Date());
 					if(isgroup) {	//是群聊
@@ -115,6 +118,10 @@ public class Client extends Thread {
 	private BufferedReader br = null;
 	private ObjectInputStream ois = null;
 	
+	private DataInputStream dis = null;
+	private DataOutputStream dos = null;
+	private byte[] alice;
+	
 	private Socket socket = null;
 	
 	public String get_name() {
@@ -136,16 +143,19 @@ public class Client extends Thread {
 		return group_id2name;
 	}
 	
-	private Client() {
+	public Client() {
 		/*测试用代码
 		Scanner sc = null;
 		*/
 		name2id = new ConcurrentHashMap<String, Integer>();
 		id2name = new ConcurrentHashMap<Integer, String>();
 		requestFriend = new HashMap<Integer, Boolean>();
+		group_name2id = new ConcurrentHashMap<String, Integer>();
+		group_id2name = new ConcurrentHashMap<Integer, String>();
 	}
 	
 	public void run(){
+		
 		try {
 			String host = InetAddress.getLocalHost().getHostAddress();
 			System.out.println(host);
@@ -160,7 +170,10 @@ public class Client extends Thread {
 			is = socket.getInputStream();
 			br = new BufferedReader(new InputStreamReader(is));
 			ois = new ObjectInputStream(is);
-
+			dis = new DataInputStream(is);
+			dos = new DataOutputStream(os);
+			alice = SecurityCipher.GenerateKey_Client(dis, dos);
+			
 			//sc = new Scanner(System.in);
 
 			while (alreadySignIn == false) {
@@ -263,6 +276,8 @@ public class Client extends Thread {
 					pw.close();
 				if (os != null)
 					os.close();
+				if (dis != null)
+					dis.close();
 				if (socket != null)
 					socket.close();
 				System.out.println("end!");
@@ -274,7 +289,8 @@ public class Client extends Thread {
 	
 	public String signUp(String user_name, String password) {
 		if (can_send(1, 0, user_name + " " + password)) {
-			IOControl.print(oos, new Message(1, user_name + " " + password));
+			
+			IOControl.print(oos, new Message(1, SecurityCipher.get_send(alice, user_name + " " + password)));
 			Message msg = IOControl.read(ois);
 			int type = msg.get_type();
 			String info = msg.get_msg();
@@ -286,7 +302,8 @@ public class Client extends Thread {
 	
 	public String signIn(String user_name, String password) {
 		if (can_send(2, 0, user_name + " " + password)) {
-			IOControl.print(oos, new Message(2, user_name + " " + password));
+			
+			IOControl.print(oos, new Message(2, SecurityCipher.get_send(alice, user_name + " " + password)));
 			Message msg = IOControl.read(ois);
 			int type = msg.get_type();
 			String info = msg.get_msg();
@@ -323,14 +340,18 @@ public class Client extends Thread {
 	}
 	
 	public void sendMessage(Integer from, Integer to, Integer messageNumber, boolean isGroup, String info) {
-		IOControl.print(oos, new Message(8, from.toString(), to.toString(), isGroup, messageNumber.toString()+"_"+info));
+		String send = SecurityCipher.get_send(alice, messageNumber.toString()+"_"+info);
+		IOControl.print(oos, new Message(8, from.toString(), to.toString(), isGroup, send));
 	}
 	
 	
 	private void parseInfo(String info) {
 		String tmp[] = info.split("\n");
 		parseFriend(tmp[0]);
-		parseGroup(tmp[1]);
+		if(tmp.length == 1)
+			parseGroup("");
+		else
+			parseGroup(tmp[1]);
 	}
 	
 	private void parseFriend(String info){
@@ -348,11 +369,13 @@ public class Client extends Thread {
 	private void parseGroup(String info) {
 		group_name2id.clear();
 		group_id2name.clear();
+		if(info.equals(""))
+			return;
 		String gru[] = info.split(" ");
 		assert gru.length % 2 == 0;
 		for(int i=0;i<gru.length;i+=2) {
-			name2id.put(gru[i+1], Integer.parseInt(gru[i]));
-			id2name.put(Integer.parseInt(gru[i]), gru[i+1]);
+			group_name2id.put(gru[i+1], Integer.parseInt(gru[i]));
+			group_id2name.put(Integer.parseInt(gru[i]), gru[i+1]);
 		}
 	}
 	

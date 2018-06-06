@@ -9,7 +9,7 @@ import javax.crypto.*;
 import javax.crypto.interfaces.*;
 import javax.crypto.spec.*;
 
-import org.passay.*;
+//import org.passay.*;
 
 import java.net.*;
 
@@ -62,6 +62,7 @@ public class SecurityCipher {
 	/*
 	 * 密码强度检测相关,调用Passay库进行密码强度检测.
 	 */
+	/*
 	private static LengthRule r1;
 	private static CharacterCharacteristicsRule r2;
 	private static WhitespaceRule r3;
@@ -81,7 +82,7 @@ public class SecurityCipher {
 		r4 = new IllegalCharacterRule(banChar);
 		validator = new PasswordValidator(r1, r2, r3, r4);
 	}
-	
+	*/
 	/*
 	 *	检验密码强度,如果强度满足要求则返回true,否则返回false
 	 *	密码强度要求:
@@ -93,11 +94,12 @@ public class SecurityCipher {
 	 *			4)至少含有一个特殊字符
 	 *		3)不包含空格,回车,换行符.
 	 */
+	/*
 	public static boolean password_strength_check(String passwd){
 		RuleResult result = validator.validate(new PasswordData(passwd));
 		return result.isValid();
 	}
-	
+	*/
 	/*
 	 * Diffie-Hellman Key Exchange
 	 * 参考Oracle文档内加密相关算法实现
@@ -321,4 +323,18 @@ public class SecurityCipher {
 		}
 		return buf.toString();
 	}
+	
+	public static String get_send(byte[] alice, String text) {
+		AESreturnType tmp = AES_encrypt(alice, text);
+		String cipher = tmp.get_cipher();
+		String IV = tmp.get_IV();
+		return cipher + " " + IV;
+	}
+	
+	public static String get_receive(byte[] bob, String text) {
+		String tmp[] = text.split(" ");
+		String ans = SecurityCipher.AES_decrypt(bob, tmp[0], tmp[1]);
+		return ans;
+	}
+	
 }

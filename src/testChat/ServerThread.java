@@ -36,6 +36,8 @@ public class ServerThread extends Thread {
 	private ObjectOutputStream oos;
 	private ObjectInputStream ois;
 	
+	private byte[] bob;
+	
 	//private ArrayBlockingQueue<Message> queue=new ArrayBlockingQueue<Message>(100,false);
 	
 	public ServerThread(){}
@@ -49,6 +51,12 @@ public class ServerThread extends Thread {
 	 * 向负责的account发送msg包
 	 */
 	public void write_to_account(Message msg){
+		
+		if(msg.get_type() == 8) {
+			String info = SecurityCipher.get_send(bob, msg.get_msg());
+			msg.set_msg(info);
+		}
+		
 		synchronized(oos){
 			IOControl.print(oos, msg);
 		}
@@ -90,6 +98,8 @@ public class ServerThread extends Thread {
 		PrintWriter pw=null;
 		oos=null;
 		ois=null;
+		DataInputStream dis = null;
+		DataOutputStream dos = null;
 		try {
 			os = socket.getOutputStream();
 			pw = new PrintWriter(os);
@@ -99,6 +109,10 @@ public class ServerThread extends Thread {
 			isr=new InputStreamReader(is);
 			br=new BufferedReader(isr);
 			ois=new ObjectInputStream(is);
+			
+			dis = new DataInputStream(is);
+			dos = new DataOutputStream(os);
+			bob = SecurityCipher.GenerateKey_Server(dis, dos);
 			
 			boolean alreadySignIn=false;
 			
@@ -117,6 +131,9 @@ public class ServerThread extends Thread {
 				if (type!=3)
 				{
 					info=msg.get_msg();
+					
+					info = SecurityCipher.get_receive(bob, info);
+					
 					tmp=info.split(" ");
 				}
 				
@@ -219,6 +236,10 @@ public class ServerThread extends Thread {
 				 */
 				if (type==8){
 					Message new_msg=null;
+					
+					//type == 8需要解密
+					info = SecurityCipher.get_receive(bob, info);
+					
 					// 发送信息者的头像
 					String profile = "<profile>" + mainServer.get_image(to) + "</profile>";
 					String messageNumber = info.substring(0, info.indexOf("_"));
@@ -435,14 +456,26 @@ public class ServerThread extends Thread {
 			e.printStackTrace();
 		}finally{
 			try{
-				if (oos!=null)oos.close();
-				if (ois!=null)ois.close();
-				if (pw!=null)pw.close();
-				if (os!=null)os.close();
-				if (br!=null)br.close();
-				if (isr!=null)isr.close();
-				if (is!=null)is.close();
-				if (socket!=null)socket.close();
+				if (oos!=null)
+					oos.close();
+				if (ois!=null)
+					ois.close();
+				if (pw!=null)
+					pw.close();
+				if (os!=null)
+					os.close();
+				if (br!=null)
+					br.close();
+				if (isr!=null)
+					isr.close();
+				if (is!=null)
+					is.close();
+				if (socket!=null)
+					socket.close();
+				if (dis != null)
+					dis.close();
+				if (dos != null)
+					dos.close();
 				System.out.println("socket end!");
 				mainServer.delete_accountServer(this.name);
 			}catch(IOException e){

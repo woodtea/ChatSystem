@@ -57,7 +57,7 @@ public class Server {
 	ConcurrentHashMap<String, String> account;
 	ConcurrentHashMap<String, ServerThread> accountServer;
 	ConcurrentHashMap<String, Vector<String>> groupMember;
-
+	ConcurrentHashMap<String, String> group2owner;
 	// @ 新加
 	ConcurrentHashMap<String, Integer> account2id;
 	ConcurrentHashMap<Integer, String> id2account;
@@ -77,12 +77,14 @@ public class Server {
 		account = new ConcurrentHashMap<String, String>();
 		accountServer = new ConcurrentHashMap<String, ServerThread>();
 		groupMember = new ConcurrentHashMap<String, Vector<String>>();
+		group2owner = new ConcurrentHashMap<String,String>();
 		account2id = new ConcurrentHashMap<String, Integer>();
 		id2account = new ConcurrentHashMap<Integer, String>();
 
 		account.clear();
 		accountServer.clear();
 		groupMember.clear();
+		group2owner.clear();
 		account2id.clear();
 		id2account.clear();
 
@@ -162,6 +164,26 @@ public class Server {
 		}
 		db.closeResultSet(rs);
 		db.clean();
+		
+		db = new DBControl(true);
+		sql = "select group_id,owner_id from groups";
+		db.getStatement(sql);
+		rs = db.query();
+		
+		try {
+			if (rs!=null)
+				while (rs.next()) {
+					String groupID = ""+rs.getInt("group_id");
+					String ownerID = ""+rs.getInt("owner_id");
+					group2owner.put(groupID, ownerID);
+				}
+		} catch (SQLException e){
+			e.printStackTrace();
+		}
+		db.closeResultSet(rs);
+		db.clean();
+		
+		printState();
 	}
 
 	/*
@@ -571,6 +593,8 @@ public class Server {
 			}
 		}
 		
+		group2owner.put(""+newGroupId, from);
+		
 		return newGroupId;
 	}
 	
@@ -619,6 +643,9 @@ public class Server {
 			groupList.clear();
 			groupMember.remove(groupId);
 		}
+		
+		group2owner.remove(groupId);
+		
 		return 0;
 	}
 	
@@ -784,10 +811,44 @@ public class Server {
 		return id2account.get(ID);
 	}
 	
+	void printState(){
+		System.out.println();
+		System.out.println("*************************");
+		System.out.println("accountServer");
+		for (String accountID : accountServer.keySet())
+			System.out.println(accountID);
+		
+		System.out.println("account2id");
+		for (String account : account2id.keySet()){
+			Integer id = account2id.get(account);
+			System.out.println(account + " " + id);
+		}
+		
+		System.out.println("groupMember");
+		for (String groupID : groupMember.keySet()){
+			Vector<String> groupList = groupMember.get(groupID);
+			System.out.print(groupID+" : ");
+			for (String member : groupList){
+				System.out.print(member+" ");
+			}
+			System.out.println();
+		}
+		
+		System.out.println("group2owner");
+		for (String groupID : group2owner.keySet()){
+			String ownerID = group2owner.get(groupID);
+			System.out.println(groupID + " " + ownerID);
+		}
+	}
 	/*
-	 * TODO
 	 * 判断某人是否是群群主
 	 */
+	protected boolean is_group_owner(String groupID, String ownerID){
+		String owner = group2owner.get(groupID);
+		if (owner == null)
+			return false;
+		return owner.equals(ownerID);
+	}
 	
 	private Server() {
 		load_Account();

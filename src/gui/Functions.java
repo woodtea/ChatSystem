@@ -149,6 +149,10 @@ public class Functions {
 		return false;
 	}
 	
+<<<<<<< HEAD
+	
+	static class user
+=======
 
 	public static ConcurrentHashMap<Integer, user> getFriendList(){
 		return client.getFriendList();
@@ -159,6 +163,7 @@ public class Functions {
 	}
 	
 	public static class user
+>>>>>>> 622f5ef4460f2876d518e89dff501c6c3713e76f
 	{
 		String name;
 		int id;

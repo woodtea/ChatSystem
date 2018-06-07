@@ -2,28 +2,19 @@ package gui;
 
 import java.awt.*;
 import java.awt.event.*;
-<<<<<<< HEAD
-=======
 import java.util.function.Function;
->>>>>>> cmy_workflow
 
 import javax.swing.*;
 import javax.swing.plaf.basic.BasicButtonUI;
 
 public class Chat {
-<<<<<<< HEAD
-=======
 	static JPanel blank=new JPanel();
->>>>>>> cmy_workflow
 	boolean isGroup;
 	int id;
 	ImageIcon icon;
 	String name;
 	JPanel but;
 	JPanel mainChat;
-<<<<<<< HEAD
-	JPanel send;
-=======
 	int mainChatNum;
 	JPanel send;
 	Chat itself=this;
@@ -33,17 +24,13 @@ public class Chat {
 		Chat that=(Chat)o;
 		return this.id==that.id&&this.isGroup==that.isGroup;
 	}
->>>>>>> cmy_workflow
 	Chat(boolean isGroup,int id,ImageIcon icon,String name)
 	{
 		this.isGroup=isGroup;
 		this.id=id;
 		this.icon=icon;
 		this.name=name;
-<<<<<<< HEAD
-=======
 		mainChatNum=0;
->>>>>>> cmy_workflow
 		but=new JPanel();
 		//but.setUI(new BasicButtonUI());// 恢复基本视觉效果  
         but.setBorder(null);
@@ -68,15 +55,12 @@ public class Chat {
 			public void mouseClicked(MouseEvent arg0) {
 				MainUI.chatName.setText(name);
 				MainUI.rightMid.setViewportView(mainChat);
-<<<<<<< HEAD
-=======
 //				mainChat.revalidate();
 //				mainChat.repaint();
 				GridBagConstraints t=MainUI.simpleCons(1,mainChatNum);
 				t.weightx=100;
 				mainChat.add(blank,t);
 				
->>>>>>> cmy_workflow
 				MainUI.rightPanel.remove(MainUI.rightDown);
 				MainUI.rightDown=send;
 				GridBagConstraints temp=MainUI.simpleCons(0, 2);
@@ -88,32 +72,17 @@ public class Chat {
         
         mainChat=new JPanel();
         mainChat.setLayout(new GridBagLayout());
-<<<<<<< HEAD
-        mainChat.setBackground(new Color(245,245,245));
-=======
 //        GridBagConstraints temp=MainUI.simpleCons(1, 1000000);
 //        temp.ipady=100;
         //mainChat.setPreferredSize(new Dimension(MainUI.rightWidth-40,479));
         //mainChat.setBackground(new Color(245,245,245));
         //mainChat.setBackground(Color.green);
->>>>>>> cmy_workflow
         mainChat.setBorder(null);
         //mainChat.setMinimumSize(new Dimension(1000,1000));
         //mainChat.setBackground(Color.green);
         
         
         send=new JPanel();
-<<<<<<< HEAD
-        send.setLayout(null);
-        send.setMinimumSize(new Dimension(MainUI.rightWidth,200));
-        send.setPreferredSize(new Dimension(MainUI.rightWidth,200));
-        JEditorPane inform=new JEditorPane();
-        inform.setFont(new Font("微软雅黑",Font.PLAIN,18));
-        inform.setBounds(0,0,MainUI.rightWidth,150);
-        send.add(inform);
-        JButton sendBut=new JButton("发送");
-        sendBut.setBounds(450,160,100,35);
-=======
         send.setLayout(new GridBagLayout());
         send.setMinimumSize(new Dimension(MainUI.rightWidth,200));
         send.setPreferredSize(new Dimension(MainUI.rightWidth,200));
@@ -133,14 +102,11 @@ public class Chat {
         //sendBut.setBounds(450,160,100,35);
         sendBut.setMinimumSize(new Dimension(100,35));
         sendBut.setPreferredSize(new Dimension(100,35));
->>>>>>> cmy_workflow
         sendBut.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent arg0) {
 				String text=inform.getText();
 				JPanel aSendMsg=new JPanel(new GridBagLayout());
-<<<<<<< HEAD
-=======
 				//System.out.println(mainChat.getSize());
 				//aSendMsg.setBackground(Color.GREEN);
 				JTextArea msg=new JTextArea();
@@ -210,19 +176,14 @@ public class Chat {
 						}
 					});
 				}
->>>>>>> cmy_workflow
 				
 			}
         }	
         );
-<<<<<<< HEAD
-        send.add(sendBut);
-=======
         temp=MainUI.simpleCons(0, 1);
         temp.anchor=temp.EAST;
         temp.insets=new Insets(0,0,0,15);
         send.add(sendBut,temp);
->>>>>>> cmy_workflow
         
         
         

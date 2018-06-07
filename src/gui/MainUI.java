@@ -145,9 +145,16 @@ public class MainUI extends JFrame{
 		rightDown=new JPanel();
 		rightDown.setMinimumSize(new Dimension(rightWidth,200));
 		rightDown.setPreferredSize(new Dimension(rightWidth,200));
+<<<<<<< HEAD
 		rightDown.setBackground(Color.GREEN);
 		temp=simpleCons(0,2);
 		temp.weightx=100;
+=======
+		//rightDown.setBackground(Color.GREEN);
+		temp=simpleCons(0,2);
+		temp.weightx=100;
+		temp.fill=temp.BOTH;
+>>>>>>> cmy_workflow
 		rightPanel.add(rightDown,temp);
 		
 		d=leftPanel.getMinimumSize();

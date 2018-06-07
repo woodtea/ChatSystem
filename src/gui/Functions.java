@@ -38,6 +38,20 @@ public class Functions {
 		client.signOff();
 	}
 	
+	
+	/**
+	 * @param from
+	 * @param to
+	 * @param isGroup
+	 * @param text
+	 * @return
+	 */
+	static String sendMsg(int from,int to,boolean isGroup,String text)
+	{
+		//TODO
+		return "fail！";
+	}
+	
 	/**
 	 * @param from 发送者自己的id
 	 * @param to 发送对象的id（可能是用户id，也可能是群id）
@@ -150,11 +164,16 @@ public class Functions {
 	}
 	
 <<<<<<< HEAD
+<<<<<<< HEAD
 	
 	static class user
 =======
 
 	public static ConcurrentHashMap<Integer, user> getFriendList(){
+=======
+
+	static ConcurrentHashMap<Integer, user> getFriendList(){
+>>>>>>> cmy_workflow
 		return client.getFriendList();
 	}
 	

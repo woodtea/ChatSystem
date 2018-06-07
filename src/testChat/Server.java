@@ -226,12 +226,12 @@ public class Server {
 		File filepath = new File("msg_id.txt");
 		BufferedReader reader = null;
 		if (filepath.exists()){
-			si = new SendIdentifier();
 			String now_si = null;
 			try {
 				reader = new BufferedReader(new FileReader(filepath));
 				now_si = reader.readLine();
 				si = new SendIdentifier(now_si);
+				si.getID();
 			} catch (FileNotFoundException e) {
 				e.printStackTrace();
 			} catch (IOException e) {
@@ -926,8 +926,9 @@ public class Server {
 	 * 上传离线消息
 	 */
 	protected void update_offline_message(String to, Message msg){
-		if (canUpload == true)
+		if (canUpload == false)
 			return;
+		
 		int type = msg.get_type();
 		String msg_from = msg.get_from();
 		String msg_to = msg.get_to();
@@ -973,6 +974,19 @@ public class Server {
 			e.printStackTrace();
 		} finally {
 			db.clean();
+		}
+		
+		File filepath = new File("msg_id.txt");
+		try {
+			BufferedWriter bw = new BufferedWriter(new FileWriter(filepath));
+			bw.write(msg_id);
+			bw.newLine();
+			bw.flush();
+			bw.close();
+		} catch (IOException e) {
+			System.out.println(msg_id);
+			e.printStackTrace();
+		} finally {
 		}
 	}
 	
@@ -1052,16 +1066,6 @@ public class Server {
 		} catch (IOException e) {
 			e.printStackTrace();
 		} finally {
-			canUpload = false;
-			File filepath = new File("msg_id.txt");
-			String store_id = si.getID();
-			try {
-				BufferedWriter bw = new BufferedWriter(new FileWriter(filepath));
-				bw.write(store_id);
-			} catch (IOException e) {
-				System.out.println(store_id);
-				e.printStackTrace();
-			}
 		}
 	}
 

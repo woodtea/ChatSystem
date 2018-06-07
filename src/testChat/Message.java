@@ -14,18 +14,20 @@ import java.util.*;
  * 
  * 在客户端层面打算只以名字作为区分
  */
-public class Message implements Serializable {
+public class Message implements Serializable, Cloneable {
+	private String ServerId;
 	private int type;
 	private String from;
 	private String to;
 	private boolean isgroup;
 	private String msg;
 
-	Message() {type=0;from="";to="";msg="";isgroup=false;}
+	Message() {ServerId="";type=0;from="";to="";msg="";isgroup=false;}
 
 	Message(int type, String msg) {this.type = type;this.msg = msg;}
 
 	Message(int type, String from, String to, boolean isgroup, String msg) {
+		this.ServerId = "";
 		this.type = type;
 		this.from = from;
 		this.to = to;
@@ -33,8 +35,11 @@ public class Message implements Serializable {
 		this.msg = msg;
 	}
 
-	int get_type() {return type;}
+	String get_id(){return ServerId;}
+	void set_id(String ServerId){this.ServerId = ServerId;}
 	
+	int get_type() {return type;}
+
 	String get_from() {return from;}
 
 	String get_to() {return to;}
@@ -47,6 +52,12 @@ public class Message implements Serializable {
 	void set_to(String to) {this.to= to;}
 	void set_isgroup(boolean isgroup) {this.isgroup = isgroup;}
 	void set_msg(String msg) {this.msg = msg;}
+	
+	public Message copy(){
+		Message new_msg = new Message(type,from,to,isgroup,msg);
+		new_msg.set_id(this.ServerId);
+		return new_msg;
+	}
 }
 
 /*

@@ -39,8 +39,9 @@ import com.mchange.v2.c3p0.*;
 /*
  * ToDoList:
  * ①邮箱修改密码
- * ②加密措施
- * 
+ * ②加密措施:已经完成
+ * ③ACK与离线推送
+ * ④数据库重复
  */
 
 /*
@@ -133,6 +134,32 @@ public class Server {
 			e1.printStackTrace();
 		}
 		
+		db.closeResultSet(rs);
+		db.clean();
+		
+		db = new DBControl(true);
+		
+		sql = "select distinct * from group_member";
+		db.getStatement(sql);
+		rs = db.query();
+		
+		try {
+			if (rs != null)
+				while (rs.next()) {
+					String groupID = ""+rs.getInt("group_id");
+					String memberID = ""+rs.getInt("member_id");
+					if (groupMember.containsKey(groupID))
+						groupMember.get(groupID).addElement(memberID);
+					else
+					{
+						Vector<String> tmp = new Vector<String>();
+						tmp.addElement(memberID);
+						groupMember.put(groupID,tmp);
+					}
+				}
+		}catch (SQLException e){
+			e.printStackTrace();
+		}
 		db.closeResultSet(rs);
 		db.clean();
 	}
@@ -267,7 +294,7 @@ public class Server {
 		String result = null;
 		DBControl db = new DBControl(true);
 
-		String sql = "select b.friend_id as id,c.name as name from account as a,friend as b,"
+		String sql = "select distinct b.friend_id as id,c.name as name from account as a,friend as b,"
 				+ "account as c where a.id=? and a.id=b.id and b.friend_id=c.id";
 		PreparedStatement stmt = db.getStatement(sql);
 		try {
@@ -391,13 +418,13 @@ public class Server {
 			stmt.setInt(2, friend_id);
 			stmt.setInt(3, friend_id);
 			stmt.setInt(4, id);
+			stmt = null;
+			db.update();
 		} catch (SQLException e) {
 			e.printStackTrace();
+		} finally {
+			db.clean();
 		}
-
-		db.update();
-
-		db.clean();
 	}
 
 	/*
@@ -423,18 +450,23 @@ public class Server {
 			stmt.setInt(2, friend_id);
 			stmt.setInt(3, friend_id);
 			stmt.setInt(4, id);
+			stmt = null;
+			db.update();
 		} catch (SQLException e) {
 			e.printStackTrace();
+		} finally {
+			db.clean();
 		}
-
-		db.update();
-
-		db.clean();
 	}
 
 	protected Vector<String> get_groupMember(String groupID) {
 		if (groupMember.containsKey(groupID)) {
-			return groupMember.get(groupID);
+			Vector<String> groupList = groupMember.get(groupID);
+			Vector<String> answer = null;
+			synchronized(groupList){
+				answer = (Vector<String>)groupList.clone();
+			}
+			return answer;
 		}
 		return null;
 	}
@@ -486,14 +518,14 @@ public class Server {
 			stmt.setInt(1, newGroupId);
 			stmt.setString(2, groupName);
 			stmt.setInt(3, fromId);
+			stmt = null;
+			db.update();
 		} catch (SQLException e) {
 			e.printStackTrace();
+		} finally {
+			db.clean();
+			db = null;
 		}
-		stmt = null;
-		
-		db.update();
-		db.clean();
-		db = null;
 		
 		//接下来更新群成员
 		db = new DBControl(true);
@@ -520,24 +552,33 @@ public class Server {
 				stmt.setInt(nowPosition, memberId);
 				nowPosition += 1;
 			}
+			stmt = null;
+			db.update();
 		}catch (SQLException e) {
 			e.printStackTrace();
 			db.clean();
 			return -1;
-		}catch (Exception e) {
-			e.printStackTrace();
+		}finally{
 			db.clean();
-			return -1;
 		}
-		stmt = null;
 		
-		db.update();
-		db.clean();
+		Vector<String> groupList = new Vector<String>();
+		synchronized(groupList){
+			groupMember.put(""+newGroupId, groupList);
+			for (String member : to){
+				if (member=="")continue;
+				groupList.addElement(member);
+			}
+		}
 		
 		return newGroupId;
 	}
 	
 	protected int delete_group(String groupId){
+		Vector<String> groupList = groupMember.get(groupId);
+		if (groupList == null)
+			return -1;
+		
 		DBControl db = new DBControl(true);
 		
 		Integer id = Integer.parseInt(groupId);
@@ -547,30 +588,37 @@ public class Server {
 		
 		try {
 			stmt.setInt(1, id);
+			stmt = null;
+			db.update();
 		} catch (SQLException e) {
 			e.printStackTrace();
+			db.clean();
 			return -1;
+		}finally{
+			db.clean();
+			db = null;
 		}
 		
-		stmt = null;
-		
-		db.update();
-		db.clean();
 		db = new DBControl(true);
 		sql = "delete from groups where group_id=?";
 		stmt = db.getStatement(sql);
 		
 		try {
 			stmt.setInt(1, id);
+			stmt = null;
+			db.update();
 		} catch (SQLException e) {
 			e.printStackTrace();
+			db.clean();
 			return -1;
+		} finally {
+			db.clean();
 		}
 		
-		stmt = null;
-		
-		db.update();
-		db.clean();
+		synchronized(groupList){
+			groupList.clear();
+			groupMember.remove(groupId);
+		}
 		return 0;
 	}
 	
@@ -603,7 +651,9 @@ public class Server {
 				return 1;
 		} catch (SQLException e1) {
 			e1.printStackTrace();
-			//return -1;
+			db.closeResultSet(rs);
+			db.clean();
+			return -1;
 		}
 		
 		db.closeResultSet(rs);
@@ -619,12 +669,18 @@ public class Server {
 			stmt.setInt(2, toID);
 		} catch (SQLException e) {
 			e.printStackTrace();
+			db.clean();
 			return -1;
 		}
 		
 		stmt = null;
 		db.update();
 		db.clean();
+		
+		Vector<String> groupList = groupMember.get(groupID);
+		synchronized(groupList){
+			groupList.addElement(to);
+		}
 		
 		return 0;
 	}
@@ -653,7 +709,9 @@ public class Server {
 				return 1;
 		} catch (SQLException e1) {
 			e1.printStackTrace();
-			//return -1;
+			db.closeResultSet(rs);
+			db.clean();
+			return -1;
 		}
 		
 		db.closeResultSet(rs);
@@ -669,12 +727,18 @@ public class Server {
 			stmt.setInt(2, toID);
 		} catch (SQLException e) {
 			e.printStackTrace();
+			db.clean();
 			return -1;
 		}
 		
 		stmt = null;
 		db.update();
 		db.clean();
+		
+		Vector<String> groupList = groupMember.get(groupID);
+		synchronized(groupList){
+			groupList.remove(to);
+		}
 		
 		return 0;
 	}
@@ -719,6 +783,11 @@ public class Server {
 		Integer ID = Integer.parseInt(id);
 		return id2account.get(ID);
 	}
+	
+	/*
+	 * TODO
+	 * 判断某人是否是群群主
+	 */
 	
 	private Server() {
 		load_Account();

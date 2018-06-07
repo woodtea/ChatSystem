@@ -42,6 +42,10 @@ public class Message implements Serializable {
 	boolean get_isgroup() {return isgroup;}
 
 	String get_msg() {return msg;}
+	
+	void set_from(String from) {this.from = from;}
+	void set_to(String to) {this.to= to;}
+	void set_isgroup(boolean isgroup) {this.isgroup = isgroup;}
 	void set_msg(String msg) {this.msg = msg;}
 }
 

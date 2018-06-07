@@ -33,40 +33,57 @@ public class Client extends Thread {
 					synchronized(requestFriend){
 						requestFriend.put(id, true);
 					}
+					//显示加好友请求
 					Functions.showAddFriendRequest(from, info);
 				}
 				if (type == 7) {
-					Functions.showAddFriendReply(from, info);
+					//显示加好友回复
+					if(info.equals("1")) {
+						//String friend_name = 
+						//addNewFriend();
+						Functions.showAddFriendReply(from, true);
+					}
+					else {
+						Functions.showAddFriendReply(from, false);
+					}
+					
 				}
 				
 				if (type == 8) {
-					//type==8需要解密
+					//接收对方发送的消息，需要解密
 					info = SecurityCipher.get_receive(alice, info);
 					
 					SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");	//设置日期格式
 					String time = df.format(new Date());
 					if(isgroup) {	//是群聊
-						String group_name = group_id2name.get(Integer.parseInt(from.split("_")[1]));
-						String friend_name = id2name.get(Integer.parseInt(from.split("_")[0]));
+						int group_id = Integer.parseInt(from.split("_")[1]);
+						int friend_id = Integer.parseInt(from.split("_")[0]);
 						ImageIcon profile = null;
-						Functions.showGroupMessage(group_name, friend_name, profile, time, info);
+						Functions.showMessage(group_id, friend_id, true, profile, time, info);
 					}
 					else {	//不是群聊
-						String friend_name = id2name.get(Integer.parseInt(from));
+						int friend_id = Integer.parseInt(from);
 						ImageIcon profile = null;
-						Functions.showFriendMessage(friend_name, profile, time, info);
+						Functions.showMessage(-1, friend_id, false, profile, time, info);;
 					}
 				}
 				
 				if (type == 9) {
+					//解析好友列表
 					parseFriend(info);
-					
 				}
 				
 				// type == 10, 删除好友信息包不会被转发给用户，所以客户端不可能收到type == 10的包
 				
 				if(type == 11) {
+					//显示新群
+					int owner = Integer.parseInt(from);
+					String group_name = info.split("_")[0];
+					int group_id = Integer.parseInt(info.split("_")[1]);
 					
+					addNewGroup(group_name, group_id, owner);
+					
+					Functions.showNewChat(group_name, group_id, true, null);;
 				}
 				if(type == 12) {
 					
@@ -82,7 +99,6 @@ public class Client extends Thread {
 				}
 				if(type == 16) {
 					parseGroup(info);
-					
 				}
 				if(type == 17) {
 					int messageNumber = Integer.parseInt(info.substring(0, info.indexOf("_")));
@@ -99,12 +115,16 @@ public class Client extends Thread {
 	
 	private String name;
 	private Integer id;
+	private ImageIcon icon;
 	private ConcurrentHashMap<String, Integer> name2id;
 	private ConcurrentHashMap<Integer, String> id2name;
-	private ConcurrentHashMap<Integer, User> friendList;
+	private ConcurrentHashMap<Integer, Functions.user> friendList;
 	private ConcurrentHashMap<String, Integer> group_name2id;
 	private ConcurrentHashMap<Integer, String> group_id2name;
+	private ConcurrentHashMap<Integer, Functions.group> groupList;
+ 	
 	private HashMap<Integer, Boolean>requestFriend;
+	
 	private boolean alreadySignIn = false;
 	private boolean alreadySignOff = false;
 	private OutputStream os = null;
@@ -149,9 +169,11 @@ public class Client extends Thread {
 		*/
 		name2id = new ConcurrentHashMap<String, Integer>();
 		id2name = new ConcurrentHashMap<Integer, String>();
+		friendList = new ConcurrentHashMap<Integer, Functions.user>();
 		requestFriend = new HashMap<Integer, Boolean>();
 		group_name2id = new ConcurrentHashMap<String, Integer>();
 		group_id2name = new ConcurrentHashMap<Integer, String>();
+		groupList = new ConcurrentHashMap<Integer, Functions.group>();
 	}
 	
 	public void run(){
@@ -310,7 +332,7 @@ public class Client extends Thread {
 			if(type == 4) {
 				alreadySignIn = true;
 				name = user_name;
-				parseInfo(info);	//解析好友列表,群列表
+				parseInfo(info);	//解析好友列表,群 + 解析好友列表后，客户端会从服务器得到所有人的头像，所有群的群主
 			}
 			return type + "_" + info;
 		}
@@ -324,19 +346,11 @@ public class Client extends Thread {
 	}
 	
 	public ConcurrentHashMap<Integer, Functions.user> getFriendList(){
-		ConcurrentHashMap<Integer, Functions.user> list = new ConcurrentHashMap<Integer, Functions.user>();
-		for(Integer i : friendList.keySet()) {
-			list.put(i, new Functions.user(friendList.get(i).name, i, friendList.get(i).image));
-		}
-		return list;
+		return friendList;
 	}
 	
 	public ConcurrentHashMap<Integer, Functions.group> getGroupList(){
-		ConcurrentHashMap<Integer, Functions.group> list = new ConcurrentHashMap<Integer, Functions.group>();
-		for(Integer i : group_id2name.keySet()) {
-			list.put(i, new Functions.group(group_id2name.get(i), i));
-		}
-		return list;
+		return groupList;
 	}
 	
 	public void sendMessage(Integer from, Integer to, Integer messageNumber, boolean isGroup, String info) {
@@ -364,6 +378,23 @@ public class Client extends Thread {
 			name2id.put(fri[i+1], Integer.parseInt(fri[i]));
 			id2name.put(Integer.parseInt(fri[i]), fri[i+1]);
 		}
+		
+		IOControl.print(oos, new Message(9, "", "", false, ""));
+		Message msg = IOControl.read(ois);
+
+		int type = msg.get_type();
+		String result = msg.get_msg();
+		assert type == 9;
+		fri = result.split("<profile>");
+		icon = new ImageIcon(ImageControl.base64StringToImg(fri[0].
+				substring(fri[0].indexOf("<profile>")+9, fri[0].length())));
+		for(int i=1;i<fri.length;i++) {
+			String fri_name = fri[i].substring(0, fri[i].indexOf(" "));
+			String fri_id = fri[i].substring(fri[i].indexOf(" "), fri[i].indexOf("<profile>"));
+			ImageIcon fri_icon = new ImageIcon(ImageControl.base64StringToImg(fri[i].
+									substring(fri[i].indexOf("<profile>")+9, fri[i].length())));
+			friendList.put(Integer.parseInt(fri_id), new Functions.user(fri_name, id, fri_icon));
+		}
 	}
 	
 	private void parseGroup(String info) {
@@ -377,6 +408,31 @@ public class Client extends Thread {
 			group_name2id.put(gru[i+1], Integer.parseInt(gru[i]));
 			group_id2name.put(Integer.parseInt(gru[i]), gru[i+1]);
 		}
+		
+		IOControl.print(oos, new Message(16, "", "", false, ""));
+		Message msg = IOControl.read(ois);
+		
+		int type = msg.get_type();
+		String result = msg.get_msg();
+		assert type == 16;
+		gru = result.split("\n");
+		for(int i=0;i<gru.length;i++) {
+			String tmp[] = gru[i].split(" ");
+			groupList.put(Integer.parseInt(tmp[1]), new Functions.group(tmp[0], 
+					Integer.parseInt(tmp[1]), Integer.parseInt(tmp[2])));
+		}
+	}
+	
+	void addNewGroup(String name, Integer id, int owner) {
+		group_name2id.put(name, id);
+		group_id2name.put(id, name);
+		groupList.put(id, new Functions.group(name, id, owner));
+	}
+	
+	void addNewFriend(String name, Integer id, ImageIcon profile) {
+		name2id.put(name, id);
+		id2name.put(id, name);
+		friendList.put(id, new Functions.user(name, id, profile));
 	}
 	
 	private boolean can_send(int type, int id, String msg){

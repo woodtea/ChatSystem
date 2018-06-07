@@ -196,6 +196,7 @@ public class ServerThread extends Thread {
 				 * type==6
 				 * from:发出好友请求的用户id
 				 * to:请求的好友的name
+				 * msg:验证信息
 				 */
 				if (type==6){
 					String to_id;
@@ -204,7 +205,7 @@ public class ServerThread extends Thread {
 						to_id = mainServer.get_name2id(to).toString();
 						to_member.addElement(to_id);
 						
-						//需要显示
+						//需要显示给对方请求者的名字
 						msg.set_from(mainServer.get_id2name(from));
 						
 						broad = new BroadCastThread(mainServer, to_member, msg);
@@ -221,14 +222,22 @@ public class ServerThread extends Thread {
 				/*
 				 * 好友请求回复
 				 * type==7
-				 * msg: 1:同意好友请求/0:好友请求被拒绝 + "_" + from + 
+				 * from: 进行回复的人的id
+				 * to: 当初发送请求的人的name
+				 * msg: 1:同意好友请求/0:好友请求被拒绝
 				 */
 				if (type==7){
+					String to_id = mainServer.get_name2id(to).toString();
+					
 					if (info.equals("1")) {
-						mainServer.add_friend(Integer.parseInt(to), Integer.parseInt(from));
+						mainServer.add_friend(Integer.parseInt(to_id), Integer.parseInt(from));
 						to_member.addElement(from);
 					}
-					to_member.addElement(to);
+					
+					//要讲from改为名字，即显示给发送请求者回复请求者的名字
+					msg.set_from(mainServer.get_id2name(from));
+					
+					to_member.addElement(to_id);
 					broad = new BroadCastThread(mainServer, to_member, msg);
 					broad.start();
 				}

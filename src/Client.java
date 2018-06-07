@@ -36,12 +36,16 @@ public class Client extends Thread {
 					//显示加好友请求
 					Functions.showAddFriendRequest(from, info);
 				}
+				/*
+				 * 显示加好友回复
+				 * from : 回复请求者的name
+				 * to : 自己的name
+				 * info : 
+				 */
 				if (type == 7) {
-					//显示加好友回复
 					if(info.equals("1")) {
-						//String friend_name = 
 						//addNewFriend();
-						Functions.showAddFriendReply(from, true);
+						//Functions.showAddFriendReply(from, true);
 					}
 					else {
 						Functions.showAddFriendReply(from, false);

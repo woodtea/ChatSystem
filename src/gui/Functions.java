@@ -26,17 +26,18 @@ public class Functions {
 		client.signOff();
 	}
 	
+	
 	/**
-	 * @param id 聊天id
-	 * @param isGroup 聊天是否是群聊
-	 * @param text	聊天信息
-	 * @param info	发送错误时填充，可以有“您已被踢出群聊”、“网络不佳，发送不成功”、“该用户不是你的好友”等等
-	 * @return 发送是否成功
+	 * @param from
+	 * @param to
+	 * @param isGroup
+	 * @param text
+	 * @return
 	 */
-	static boolean sendMsg(int id,boolean isGroup,String text,String info)
+	static String sendMsg(int from,int to,boolean isGroup,String text)
 	{
 		//TODO
-		return true;
+		return "fail！";
 	}
 	
 	/**

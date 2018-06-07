@@ -13,7 +13,7 @@ public class CLPanel extends JPanel{
 		chatList=new Vector<Chat>();
 		setLayout(new GridBagLayout());
 		//以下为测试用代码
-		for(int i=0;i<10;i++)
+		for(int i=10;i>=0;i--)
 		{
 			chatList.add(new Chat(false,i,new ImageIcon("cmy.jpg"),"崔牧原"+i));
 		}
@@ -23,11 +23,20 @@ public class CLPanel extends JPanel{
 		removeAll();
 		GridBagConstraints temp;
 		int i=0;
-		for(Chat c:chatList)
+		for(int j=chatList.size()-1;j>=0;j--)
 		{
 			temp=MainUI.simpleCons(0, i++);
-			add(c.but,temp);
+			add(chatList.elementAt(j).but,temp);
 		}
+	}
+	void toTop(Chat chat)
+	{
+		chatList.remove(chat);
+		chatList.add(chat);
+		refresh();
+		this.revalidate();
+		this.repaint();
+		
 	}
 	void save()
 	{

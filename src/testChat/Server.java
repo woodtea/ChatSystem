@@ -52,13 +52,50 @@ import com.mchange.v2.c3p0.*;
  *		2)类名,变量名采用大写命名.
  */
 
+class SendIdentifier{
+	String start;
+	SendIdentifier(){start = "0";}
+	SendIdentifier(String start){this.start = start;}
+	String plus(String id){
+		int len = id.length();
+		String ans = "";
+		boolean addOne = true;
+		for (int i = len-1; i>=0; --i){
+			if (addOne){
+				if (id.charAt(i)=='9'){
+					ans = "0" + ans;
+				}
+				else{
+					ans = (char)(id.charAt(i)+1) + ans;
+					addOne = false;
+				}
+			}
+			else{
+				ans = id.charAt(i) + ans;
+			}
+		}
+		if (addOne){
+			ans = "1" + ans;
+		}
+		return ans;
+	}
+	
+	String getID(){
+		String id = null;
+		synchronized(start){
+			id = start;
+			start = plus(start);
+		}
+		return id;
+	}
+}
+
 public class Server {
 
 	ConcurrentHashMap<String, String> account;
-	ConcurrentHashMap<String, ServerThread> accountServer;
+	volatile ConcurrentHashMap<String, ServerThread> accountServer;
 	ConcurrentHashMap<String, Vector<String>> groupMember;
 	ConcurrentHashMap<String, String> group2owner;
-	// @ 新加
 	ConcurrentHashMap<String, Integer> account2id;
 	ConcurrentHashMap<Integer, String> id2account;
 
@@ -67,6 +104,9 @@ public class Server {
 
 	Integer accountNo = 0;
 	Integer groupNo = 0;
+	
+	SendIdentifier si;
+	volatile private boolean canUpload = true; 
 
 	/*
 	 * 从服务器本地指定的文件导入指定的账号名 与密码(每行输入格式为: 账号名 密码 ) 初始化其他数组
@@ -183,6 +223,30 @@ public class Server {
 		db.closeResultSet(rs);
 		db.clean();
 		
+		File filepath = new File("msg_id.txt");
+		BufferedReader reader = null;
+		if (filepath.exists()){
+			si = new SendIdentifier();
+			String now_si = null;
+			try {
+				reader = new BufferedReader(new FileReader(filepath));
+				now_si = reader.readLine();
+				si = new SendIdentifier(now_si);
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			} finally {
+				if (reader != null)
+					try{
+						reader.close();
+					} catch (IOException e){
+						e.printStackTrace();
+					}
+			}
+		}else{
+			si = new SendIdentifier();
+		}
 		printState();
 	}
 
@@ -850,6 +914,120 @@ public class Server {
 		return owner.equals(ownerID);
 	}
 	
+	protected String get_group_owner(String groupID) {
+		String ans = group2owner.get(groupID);
+		if (ans == null)
+			return "";
+		else
+			return ans;
+	}
+	
+	/*
+	 * 上传离线消息
+	 */
+	protected void update_offline_message(String to, Message msg){
+		if (canUpload == true)
+			return;
+		int type = msg.get_type();
+		String msg_from = msg.get_from();
+		String msg_to = msg.get_to();
+		String info = msg.get_msg(); 
+		boolean is_group = msg.get_isgroup();
+		String isgroup = "";
+		if (is_group) isgroup = "T";
+				else  isgroup = "F"; 
+		
+		String msg_id = si.getID();
+		DBControl db = new DBControl(true);
+		
+		String sql = "insert into message(msg_id,msg_type,msg_from,msg_to,is_group,msg) VALUES(?,?,?,?,?,?)";
+		PreparedStatement stmt = db.getStatement(sql);
+		
+		try {
+			stmt.setString(1, msg_id);
+			stmt.setInt(2, type);
+			stmt.setString(3, msg_from);
+			stmt.setString(4, msg_to);
+			stmt.setString(5, isgroup);
+			stmt.setString(6, info);
+			stmt = null;
+			db.update();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			db.clean();
+		}
+		
+		db = new DBControl(true);
+		
+		sql = "insert into message_send(msg_id,send_to,have_send) VALUES(?,?,?)";
+		stmt = db.getStatement(sql);
+		
+		try {
+			stmt.setString(1, msg_id);
+			stmt.setString(2, to);
+			stmt.setString(3, "F");
+			stmt = null;
+			db.update();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			db.clean();
+		}
+	}
+	
+	protected Vector<Message> get_offline_message(String to){
+		Vector<Message> ans = new Vector<Message>();
+		DBControl db = new DBControl(true);
+		String sql = "select a.msg_type as msg_type, a.msg_from as msg_from, "
+				+ "a.msg_to as msg_to, a.is_group as is_group, a.msg as msg "
+				+ "from message as a, message_send as b where "
+				+"a.msg_id=b.msg_id and b.send_to=? and b.have_send='F'";
+		PreparedStatement stmt = db.getStatement(sql);
+		ResultSet rs = null;
+		try {
+			stmt.setString(1, to);
+			stmt = null;
+			rs = db.query();
+			if (rs!=null)
+				while (rs.next()){
+					int msg_type = rs.getInt("msg_type");
+					String msg_from = rs.getString("msg_from");
+					String msg_to = rs.getString("msg_to");
+					String is_group = rs.getString("is_group");
+					boolean isgroup = is_group.equals("T");
+					String msg = rs.getString("msg");
+					ans.addElement(new Message(msg_type, msg_from, msg_to, isgroup, msg));
+				}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			db.closeResultSet(rs);
+			db.clean();
+		}
+		return ans;
+	}
+	
+	protected boolean update_send_message(String msg_id, String to){
+		DBControl db = new DBControl(true);
+		String sql = "UPDATE message_send SET have_send='T' where msg_id=? and"
+				+ " send_to=? and have_send='F'"; 
+		PreparedStatement stmt = db.getStatement(sql);
+		try {
+			stmt.setString(1, msg_id);
+			stmt.setString(2, to);
+			stmt = null;
+			db.update();
+		} catch (SQLException e) {
+			db.clean();
+			e.printStackTrace();
+			return false;
+		} finally {
+			db.clean();
+		}
+		return true;
+	}
+	
 	private Server() {
 		load_Account();
 
@@ -873,6 +1051,17 @@ public class Server {
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
+		} finally {
+			canUpload = false;
+			File filepath = new File("msg_id.txt");
+			String store_id = si.getID();
+			try {
+				BufferedWriter bw = new BufferedWriter(new FileWriter(filepath));
+				bw.write(store_id);
+			} catch (IOException e) {
+				System.out.println(store_id);
+				e.printStackTrace();
+			}
 		}
 	}
 

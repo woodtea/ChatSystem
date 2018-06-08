@@ -12,21 +12,24 @@ import javax.swing.ImageIcon;
 
 public class Client extends Thread {
 	
-	class RecieveThread extends Thread {
+	class ReceiveThread extends Thread {
 		ObjectInputStream ois;
 
-		RecieveThread(ObjectInputStream ois) {
+		ReceiveThread(ObjectInputStream ois) {
 			this.ois = ois;
 		}
 
+		@SuppressWarnings("unused")
 		public void run() {
 			while (true) {
 				Message msg = null;
-				synchronized(ois) {
-					IOControl.read(ois);
-				}
+				msg = (Message)IOControl.read(ois);
 
-				@SuppressWarnings("null")
+				if(msg == null)
+					continue;
+				
+				System.out.println("(receive thread)" + msg.toString());
+				
 				int type = msg.get_type();
 				String from = msg.get_from();
 				String to = msg.get_to();
@@ -95,19 +98,31 @@ public class Client extends Thread {
 					
 					addNewGroup(group_name, group_id, owner);
 					
-					Functions.showNewChat(group_name, group_id, true, null);;
+					Functions.showNewChat(group_name, group_id, true, null);
 				}
 				if(type == 12) {
-					
+					//将被解散的群删除
+					deleteGroup(Integer.parseInt(to));
 				}
 				if(type == 13) {
+					//被邀请入群，to:邀请的用户+邀请其加入的群id+邀请其加入的群name+邀请其加入的群owner
+					String tmp[] = to.split("_");
+					int owner = Integer.parseInt(tmp[3]);
+					String group_name = tmp[2];
+					int group_id = Integer.parseInt(tmp[1]);
 					
+					addNewGroup(group_name, group_id, owner);
+					
+					Functions.showNewChat(group_name, group_id, true, null);
 				}
 				if(type == 14) {
-					
+					//退群成功
+					deleteGroup(Integer.parseInt(to));
 				}
 				if(type == 15) {
-					
+					//被踢
+					int delete_id = Integer.parseInt(to.split("_")[1]);
+					deleteGroup(delete_id);
 				}
 				if(type == 16) {
 					parseGroupWithOwner(info);
@@ -119,8 +134,7 @@ public class Client extends Thread {
 				}
 				
 				if (type != 8)
-				System.out.println(
-						"type:" + type + ", from:" + from + ", to:" + to + ", isgroup:" + isgroup + ", msg:" + info);
+				System.out.println("(again)" + msg.toString());
 			}
 		}
 	}
@@ -130,15 +144,15 @@ public class Client extends Thread {
 	private ImageIcon icon;
 	private ConcurrentHashMap<String, Integer> name2id;
 	private ConcurrentHashMap<Integer, String> id2name;
-	private ConcurrentHashMap<Integer, Functions.user> friendList;
-	private ConcurrentHashMap<String, Integer> group_name2id;
+	private volatile ConcurrentHashMap<Integer, Functions.user> friendList;
+	//private ConcurrentHashMap<String, Integer> group_name2id;
 	private ConcurrentHashMap<Integer, String> group_id2name;
-	private ConcurrentHashMap<Integer, Functions.group> groupList;
+	private volatile ConcurrentHashMap<Integer, Functions.group> groupList;
  	
 	private HashMap<Integer, Boolean>requestFriend;
 	
-	private boolean alreadySignIn = false;
-	private boolean alreadySignOff = false;
+	private volatile boolean alreadySignIn = false;
+	private volatile boolean alreadySignOff = false;
 	private OutputStream os = null;
 	private PrintWriter pw = null;
 	private ObjectOutputStream oos = null;
@@ -148,7 +162,7 @@ public class Client extends Thread {
 	*/
 	private InputStream is = null;
 	private BufferedReader br = null;
-	private ObjectInputStream ois = null;
+	private volatile ObjectInputStream ois = null;
 	
 	private DataInputStream dis = null;
 	private DataOutputStream dos = null;
@@ -156,11 +170,16 @@ public class Client extends Thread {
 	
 	private Socket socket = null;
 	
+	private ReceiveThread receive;
+	
 	public String get_name() {
 		return name;
 	}
 	public Integer get_id() {
 		return id;
+	}
+	public ImageIcon get_icon(){
+		return icon;
 	}
 	public ConcurrentHashMap<String, Integer> getName2id() {
 		return name2id;
@@ -168,9 +187,7 @@ public class Client extends Thread {
 	public ConcurrentHashMap<Integer, String> getId2name() {
 		return id2name;
 	}
-	public ConcurrentHashMap<String, Integer> getGroup_name2id() {
-		return group_name2id;
-	}
+	
 	public ConcurrentHashMap<Integer, String> getGroup_id2name() {
 		return group_id2name;
 	}
@@ -183,7 +200,7 @@ public class Client extends Thread {
 		id2name = new ConcurrentHashMap<Integer, String>();
 		friendList = new ConcurrentHashMap<Integer, Functions.user>();
 		requestFriend = new HashMap<Integer, Boolean>();
-		group_name2id = new ConcurrentHashMap<String, Integer>();
+		//group_name2id = new ConcurrentHashMap<String, Integer>();
 		group_id2name = new ConcurrentHashMap<Integer, String>();
 		groupList = new ConcurrentHashMap<Integer, Functions.group>();
 	}
@@ -241,12 +258,6 @@ public class Client extends Thread {
 				*/
 			}
 			System.out.println("(client) already sign in.");
-			
-			RecieveThread recieve = new RecieveThread(ois);
-			recieve.start();
-			
-			IOControl.print(oos, new Message(9, id+"", "", false, ""));
-			IOControl.print(oos, new Message(16, id+"", "", false, ""));
 
 			while (alreadySignOff == false) {
 				/* 测试用代码
@@ -348,6 +359,19 @@ public class Client extends Thread {
 				alreadySignIn = true;
 				name = user_name;
 				parseInfo(info);	//解析好友列表,群 + 解析好友列表后，客户端会从服务器得到所有人的头像，所有群的群主
+				
+				receive = new ReceiveThread(ois);
+				receive.start();
+				IOControl.print(oos, new Message(9, id+"", "", false, ""));
+				IOControl.print(oos, new Message(16, id+"", "", false, ""));
+				
+				try {
+					this.sleep(1000);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
 			}
 			return type + "_" + info;
 		}
@@ -369,7 +393,9 @@ public class Client extends Thread {
 	}
 	
 	public void sendMessage(Integer from, Integer to, Integer messageNumber, boolean isGroup, String info) {
-		String send = SecurityCipher.get_send(alice, messageNumber.toString()+"_"+info);
+		System.out.println("(before cipher)"+messageNumber + "_" + info);
+		String send = SecurityCipher.get_send(alice, messageNumber+"_"+info);
+		System.out.println("(after cipher)"+send);
 		IOControl.print(oos, new Message(8, from.toString(), to.toString(), isGroup, send));
 	}
 	
@@ -404,24 +430,25 @@ public class Client extends Thread {
 			String fri_id = fri[i].substring(fri[i].indexOf(" ")+1, fri[i].indexOf("<profile>"));
 			ImageIcon fri_icon = new ImageIcon(ImageControl.base64StringToImg(fri[i].
 									substring(fri[i].indexOf("<profile>")+9, fri[i].length())));
-			friendList.put(Integer.parseInt(fri_id), new Functions.user(fri_name, id, fri_icon));
+			friendList.put(Integer.parseInt(fri_id), new Functions.user(fri_name, Integer.parseInt(fri_id), fri_icon));
 		}
 	}
 	
 	private void parseGroup(String info) {
-		group_name2id.clear();
+		//group_name2id.clear();
 		group_id2name.clear();
 		if(info.equals(""))
 			return;
 		String gru[] = info.split(" ");
 		assert gru.length % 2 == 0;
 		for(int i=0;i<gru.length;i+=2) {
-			group_name2id.put(gru[i+1], Integer.parseInt(gru[i]));
+			//group_name2id.put(gru[i+1], Integer.parseInt(gru[i]));
 			group_id2name.put(Integer.parseInt(gru[i]), gru[i+1]);
 		}
 	}
 	
 	private void parseGroupWithOwner(String result) { 
+		//System.out.println("safasfasfasfas");
 		String gru[] = result.split("\n");
 		
 		ImageIcon icon = null;
@@ -434,7 +461,7 @@ public class Client extends Thread {
 	}
 	
 	void addNewGroup(String name, Integer id, int owner) {
-		group_name2id.put(name, id);
+		//group_name2id.put(name, id);
 		group_id2name.put(id, name);
 		
 		ImageIcon icon = null;
@@ -446,6 +473,11 @@ public class Client extends Thread {
 		name2id.put(name, id);
 		id2name.put(id, name);
 		friendList.put(id, new Functions.user(name, id, profile));
+	}
+	
+	void deleteGroup(Integer id) {
+		id2name.remove(id);
+		groupList.remove(id);
 	}
 	
 	private boolean can_send(int type, int id, String msg){

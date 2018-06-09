@@ -91,7 +91,6 @@ class SendIdentifier{
 }
 
 public class Server {
-
 	ConcurrentHashMap<String, String> account;
 	volatile ConcurrentHashMap<String, ServerThread> accountServer;
 	ConcurrentHashMap<String, Vector<String>> groupMember;
@@ -469,14 +468,14 @@ public class Server {
 	 * 检查某个账号是否在线（多态）
 	 */
 	protected boolean check_online(String name) {
-		return accountServer.contains(name);
+		return accountServer.containsKey(name);
 	}
 
 	protected boolean check_online(int id) {
 		String name = id2account.get(id);
 		if (name == null)
 			return false;
-		return accountServer.contains(name);
+		return accountServer.containsKey(name);
 	}
 
 	/*
@@ -853,8 +852,12 @@ public class Server {
 	 */
 	protected String get_image(String id){
 		BufferedImage tmp = null;
+		File filepath = new File("img"+separator+id+".jpg");
+		String destination = "default";
+		if (filepath.exists())
+			destination = id+"";
 		try {
-			tmp = ImageIO.read(new FileInputStream("img"+separator+id+".jpg"));
+			tmp = ImageIO.read(new FileInputStream("img"+separator+destination+".jpg"));
 		} catch (IOException e) {
 			e.printStackTrace();
 			return null;
@@ -993,7 +996,7 @@ public class Server {
 	protected Vector<Message> get_offline_message(String to){
 		Vector<Message> ans = new Vector<Message>();
 		DBControl db = new DBControl(true);
-		String sql = "select a.msg_type as msg_type, a.msg_from as msg_from, "
+		String sql = "select a.msg_id as msg_id, a.msg_type as msg_type, a.msg_from as msg_from, "
 				+ "a.msg_to as msg_to, a.is_group as is_group, a.msg as msg "
 				+ "from message as a, message_send as b where "
 				+"a.msg_id=b.msg_id and b.send_to=? and b.have_send='F'";
@@ -1005,13 +1008,17 @@ public class Server {
 			rs = db.query();
 			if (rs!=null)
 				while (rs.next()){
+					String msg_id = rs.getString("msg_id");
 					int msg_type = rs.getInt("msg_type");
 					String msg_from = rs.getString("msg_from");
 					String msg_to = rs.getString("msg_to");
 					String is_group = rs.getString("is_group");
 					boolean isgroup = is_group.equals("T");
 					String msg = rs.getString("msg");
-					ans.addElement(new Message(msg_type, msg_from, msg_to, isgroup, msg));
+					Message tmp_msg = new Message(msg_type, msg_from, msg_to, isgroup, msg);
+					tmp_msg.set_id(msg_id);
+					ans.addElement(tmp_msg);
+					
 				}
 		} catch (SQLException e) {
 			e.printStackTrace();

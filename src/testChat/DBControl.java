@@ -5,10 +5,10 @@ import java.sql.*;
 import com.mchange.v2.c3p0.ComboPooledDataSource;
 
 public class DBControl {
-	private static final String JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
-	private static final String URL = "jdbc:mysql://localhost:3306/ChatSystem?autoReconnect=true&useSSL=false";
-	private static final String USER = "root";
-	private static final String PASSWORD = "123A(456)h";
+	private static final String JDBC_DRIVER = Parameter.JDBC_DRIVER;
+	private static final String URL = Parameter.DB_URL;
+	private static final String USER = Parameter.DB_USER;
+	private static final String PASSWORD = Parameter.DB_PASSWD;
 
 	private static ComboPooledDataSource cpds;
 	private Connection conn;
@@ -129,6 +129,14 @@ public class DBControl {
 				cpds.close();
 		}
 	}
+	
+	public void start_transaction(){
+		try {
+			conn.setAutoCommit(false);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
 }
 
 /*
@@ -140,4 +148,17 @@ public class DBControl {
  * 2) 朋友数据库表 create table friend( id int not null, friend_id int no FOREIGN KEY
  * (id) REFERENCES account(id), FOREIGN KEY (friend_id) REFERENCES account(id));
  * 
+ * 3）群 create table groups(group_id INT PRIMARY KEY,group_name varchar(300) NOT NULL,
+ * 		owner_id INT NOT NULL,FOREIGN KEY(owner_id) REFERENCES account(id));   
+ * 
+ * 4) 群成员 create table group_member(group_id INT, member_id INT,
+ * 		    FOREIGN KEY(group_id) REFERENCES groups(group_id),
+ * 		    FOREIGN KEY(member_id) REFERENCES account(id));
+ * 
+ * 5) 消息列表 create table message( msg_id varchar(200) PRIMARY KEY, msg_type int NOT NULL, 
+ * 		msg_from varchar(300), msg_to varchar(300), is_group varchar(10), msg varchar(500));
+ * 
+ * 6) 消息发送表 create table message_send( msg_id varchar(200),
+ * 		 send_to varchar(200), have_send varchar(10), FOREIGN KEY(msg_id) REFERENCES message(msg_id));
+
  */

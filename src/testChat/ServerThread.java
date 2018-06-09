@@ -18,13 +18,15 @@ class BroadCastThread extends Thread{
 	
 	public void run(){
 		for (String to : to_member){
-			if(mainServer.check_online(to+"")) {
+			if(mainServer.check_online(mainServer.get_id2name(to))) {
 				ServerThread st=mainServer.get_accountServer(to);
 				assert st != null;
 				st.write_to_account(msg.copy());
 			}
 			else {
-				mainServer.update_offline_message(to, msg);
+				if (msg.get_type() >=6 && msg.get_type() <= 8){
+					mainServer.update_offline_message(to, msg);
+				}
 			}
 		}
 	}
@@ -182,6 +184,7 @@ public class ServerThread extends Thread {
 					{
 						alreadySignIn=true;
 						name=tmp[0];
+						
 						IOControl.print(oos,new Message(4,
 							mainServer.get_account_message(tmp[0])));
 					}
@@ -250,10 +253,11 @@ public class ServerThread extends Thread {
 					
 					String gru[] = result.split(" ");
 					String ans = "";
-					for(int i=0;i<gru.length;i+=2) {
-						String g = gru[i];
-						ans += gru[i+1] + " " + g + " " + mainServer.get_group_owner(g) + "\n";
-					}
+					if (! result.equals(""))
+						for(int i=0;i<gru.length;i+=2) {
+							String g = gru[i];
+							ans += gru[i+1] + " " + g + " " + mainServer.get_group_owner(g) + "\n";
+						}
 					
 					Message new_msg=new Message(16,"",from,false,ans);
 					to_member.addElement(from);
@@ -263,17 +267,28 @@ public class ServerThread extends Thread {
 				}
 			}
 			
+			System.out.println("receive");
+			
+			try {
+				sleep(5000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 			//发送离线消息
 			Vector<Message> offLine = mainServer.get_offline_message(mainServer.get_name2id(name)+"");
 			for(Message msg : offLine) {
 				if(alreadySignOff == false)
-					transmitMsg(msg);
+				{
+					System.out.println("output bas *******: "+msg);
+					transmitMsg(msg, true);
+					mainServer.update_send_message(msg.get_id(), msg.get_to());
+				}
 			}
 			
 			//聊天系统开始正常工作
 			while (alreadySignOff==false){
 				Message msg=IOControl.read(ois);
-				transmitMsg(msg);
+				transmitMsg(msg, false);
 			}
 			
 		}catch(IOException e){
@@ -309,7 +324,7 @@ public class ServerThread extends Thread {
 		}
 	}
 	
-	void transmitMsg(Message msg) {
+	void transmitMsg(Message msg, boolean ciphered) {
 		if (msg==null){
 			System.out.println("Null Class");
 			alreadySignOff = true;
@@ -390,14 +405,17 @@ public class ServerThread extends Thread {
 		 */
 		if (type==8){
 			Message new_msg=null;
+			String messageNumber = "";
 			
 			//type == 8需要解密
-			System.out.println("(brfore cipher)"+info);
-			info = SecurityCipher.get_receive(bob, info);
+			System.out.println("(before cipher)"+info);
+			if(! ciphered) {
+				info = SecurityCipher.get_receive(bob, info);
+				messageNumber = info.substring(0, info.indexOf("_"));
+				info = info.substring(info.indexOf("_") + 1, info.length());
+			}
 			System.out.println("(after cipher)"+info);
 			
-			String messageNumber = info.substring(0, info.indexOf("_"));
-			info = info.substring(info.indexOf("_") + 1, info.length());
 			if(isgroup) {
 				if(isGroupMember(from, to)) {
 					//发消息者在群中
@@ -407,21 +425,24 @@ public class ServerThread extends Thread {
 					new_msg = new Message(type, from+"_"+to, to, isgroup, info);
 					broad = new BroadCastThread(mainServer, to_member, new_msg);
 					broad.start();
-					
-					Vector<String> reply_member = new Vector<String>();
-					reply_member.addElement(from);
-					Message reply_msg = new Message(17, from, to, false, messageNumber + "_" + Functions.success);
-					BroadCastThread reply_broad = new BroadCastThread(mainServer, reply_member, reply_msg);
-					reply_broad.start();
+					if(! ciphered) {
+						Vector<String> reply_member = new Vector<String>();
+						reply_member.addElement(from);
+						Message reply_msg = new Message(17, from, to, false, messageNumber + "_" + Functions.success);
+						BroadCastThread reply_broad = new BroadCastThread(mainServer, reply_member, reply_msg);
+						reply_broad.start();
+					}
 				}
 				else {
 					//发消息者不在群中，发送失败
-					Vector<String> reply_member = new Vector<String>();
-					reply_member.addElement(from);
-					Message reply_msg = new Message(17, from, to, false, 
-							messageNumber + "_" + Functions.notGroupMember);
-					BroadCastThread reply_broad = new BroadCastThread(mainServer, reply_member, reply_msg);
-					reply_broad.start();
+					if(! ciphered) {
+						Vector<String> reply_member = new Vector<String>();
+						reply_member.addElement(from);
+						Message reply_msg = new Message(17, from, to, false, 
+								messageNumber + "_" + Functions.notGroupMember);
+						BroadCastThread reply_broad = new BroadCastThread(mainServer, reply_member, reply_msg);
+						reply_broad.start();
+					}
 				}
 			}
 			else{
@@ -432,20 +453,23 @@ public class ServerThread extends Thread {
 					new_msg= new Message(type, from, to, isgroup, info);
 					broad = new BroadCastThread(mainServer, to_member, new_msg);
 					broad.start();
-					
-					Vector<String> reply_member = new Vector<String>();
-					reply_member.addElement(from);
-					Message reply_msg = new Message(17, from, to, false, messageNumber + "_" + Functions.success);
-					BroadCastThread reply_broad = new BroadCastThread(mainServer, reply_member, reply_msg);
-					reply_broad.start();
+					if(! ciphered) {
+						Vector<String> reply_member = new Vector<String>();
+						reply_member.addElement(from);
+						Message reply_msg = new Message(17, from, to, false, messageNumber + "_" + Functions.success);
+						BroadCastThread reply_broad = new BroadCastThread(mainServer, reply_member, reply_msg);
+						reply_broad.start();
+					}
 				}
 				else {
 					//两人不是好友，发送失败
-					Vector<String> reply_member = new Vector<String>();
-					reply_member.addElement(from);
-					Message reply_msg = new Message(17, from, to, false, messageNumber + "_" + Functions.notFriend);
-					BroadCastThread reply_broad = new BroadCastThread(mainServer, reply_member, reply_msg);
-					reply_broad.start();
+					if(! ciphered) {
+						Vector<String> reply_member = new Vector<String>();
+						reply_member.addElement(from);
+						Message reply_msg = new Message(17, from, to, false, messageNumber + "_" + Functions.notFriend);
+						BroadCastThread reply_broad = new BroadCastThread(mainServer, reply_member, reply_msg);
+						reply_broad.start();
+					}
 				}
 			}
 		}

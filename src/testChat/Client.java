@@ -28,7 +28,8 @@ public class Client extends Thread {
 				if(msg == null)
 					continue;
 				
-				System.out.println("(receive thread)" + msg.toString());
+				if (msg.get_type() != 9)
+					System.out.println("(receive thread)" + msg.toString());
 				
 				int type = msg.get_type();
 				String from = msg.get_from();
@@ -56,10 +57,10 @@ public class Client extends Thread {
 							from.substring(from.indexOf("<profile>")+9, from.indexOf("</profile>"))));
 					if(info.equals("1")) {
 						addNewFriend(new_name, new_id, new_profile);
-						Functions.showAddFriendReply(new_name, new_id, new_profile, true);
+						//Functions.showAddFriendReply(new_name, new_id, new_profile, true);
 					}
 					else {
-						Functions.showAddFriendReply(new_name, new_id, new_profile, false);
+						//Functions.showAddFriendReply(new_name, new_id, new_profile, false);
 					}
 					
 				}
@@ -133,8 +134,10 @@ public class Client extends Thread {
 					Functions.replyMsg(Integer.parseInt(from), Integer.parseInt(to), isgroup, messageNumber, reply);
 				}
 				
+				/*
 				if (type != 8)
 				System.out.println("(again)" + msg.toString());
+				*/
 			}
 		}
 	}
@@ -210,7 +213,7 @@ public class Client extends Thread {
 		try {
 			String host = InetAddress.getLocalHost().getHostAddress();
 			System.out.println(host);
-			int port = 1234;
+			int port = Parameter.Server_Port;
 
 			socket = new Socket(host, port);
 
@@ -449,6 +452,9 @@ public class Client extends Thread {
 	
 	private void parseGroupWithOwner(String result) { 
 		//System.out.println("safasfasfasfas");
+		groupList.clear();
+		if (result.equals(""))
+			return;
 		String gru[] = result.split("\n");
 		
 		ImageIcon icon = null;

@@ -25,6 +25,7 @@ public class IOControl {
 		try{
 			msg=(Message)os.readObject();
 		}catch(EOFException e){
+			e.printStackTrace();
 		}catch(IOException e){
 			e.printStackTrace();
 		}catch (ClassNotFoundException e) {

@@ -58,11 +58,16 @@ public class Message implements Serializable, Cloneable {
 		new_msg.set_id(this.ServerId);
 		return new_msg;
 	}
+	
+	public String toString() {
+		return "type:" + type + ", from:" + from + ", to:" + to + ", isgroup:" + isgroup + ", msg:" + msg;
+	}
 }
 
 /*
  * Type数字与对应种类
  * 
+ * 0: 心跳包
  * 1: 客户端注册包
  * 2: 客户端登录包 
  * 3: 客户端关闭包 

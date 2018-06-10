@@ -97,6 +97,7 @@ public class Server {
 	ConcurrentHashMap<String, String> group2owner;
 	ConcurrentHashMap<String, Integer> account2id;
 	ConcurrentHashMap<Integer, String> id2account;
+	volatile ConcurrentHashMap<String, Integer> account2profile;
 
 	private final static String separator = System.getProperty("file.separator");
 	private final static String line = System.lineSeparator();
@@ -119,6 +120,7 @@ public class Server {
 		group2owner = new ConcurrentHashMap<String,String>();
 		account2id = new ConcurrentHashMap<String, Integer>();
 		id2account = new ConcurrentHashMap<Integer, String>();
+		account2profile = new ConcurrentHashMap<String, Integer>();
 
 		account.clear();
 		accountServer.clear();
@@ -126,6 +128,7 @@ public class Server {
 		group2owner.clear();
 		account2id.clear();
 		id2account.clear();
+		account2profile.clear();
 
 		account.put("server", "");
 
@@ -853,7 +856,17 @@ public class Server {
 	protected String get_image(String id){
 		BufferedImage tmp = null;
 		File filepath = new File("img"+separator+id+".jpg");
-		String destination = "default";
+		
+		Random random_profile = new Random();
+		int default_profile = (((random_profile.nextInt()%10+10)%10)+1);
+		if (account2profile.containsKey(id)){
+			default_profile = account2profile.get(id);
+		}
+		else{
+			account2profile.put(id, default_profile);
+		}
+		
+		String destination = "default_"+ default_profile;
 		if (filepath.exists())
 			destination = id+"";
 		try {
@@ -933,6 +946,9 @@ public class Server {
 			return;
 		
 		int type = msg.get_type();
+		if (type<6||type>8)
+			return;
+		
 		String msg_from = msg.get_from();
 		String msg_to = msg.get_to();
 		String info = msg.get_msg(); 
@@ -1017,6 +1033,8 @@ public class Server {
 					String msg = rs.getString("msg");
 					Message tmp_msg = new Message(msg_type, msg_from, msg_to, isgroup, msg);
 					tmp_msg.set_id(msg_id);
+					if (msg_type == 8 && isgroup)
+						tmp_msg.set_to(to);
 					ans.addElement(tmp_msg);
 					
 				}
@@ -1049,11 +1067,189 @@ public class Server {
 		return true;
 	}
 	
+	/*
+	 * 上传已发送消息
+	 */
+	protected boolean update_send_message(String to, Message msg){
+		if (canUpload == false)
+			return false;
+		
+		int type = msg.get_type();
+		if (type != 8)
+			return false;
+		
+		String msg_from = msg.get_from();
+		String msg_to = msg.get_to();
+		String info = msg.get_msg(); 
+		boolean is_group = msg.get_isgroup();
+		String isgroup = "";
+		if (is_group) isgroup = "T";
+				else  isgroup = "F"; 
+		
+		String msg_id = si.getID();
+		DBControl db = new DBControl(true);
+		
+		String sql = "insert into message(msg_id,msg_type,msg_from,msg_to,is_group,msg) VALUES(?,?,?,?,?,?)";
+		PreparedStatement stmt = db.getStatement(sql);
+		
+		try {
+			stmt.setString(1, msg_id);
+			stmt.setInt(2, type);
+			stmt.setString(3, msg_from);
+			stmt.setString(4, msg_to);
+			stmt.setString(5, isgroup);
+			stmt.setString(6, info);
+			stmt = null;
+			db.update();
+		} catch (SQLException e) {
+			e.printStackTrace();
+			db.clean();
+			return false;
+		} finally {
+			db.clean();
+		}
+		
+		db = new DBControl(true);
+		
+		sql = "insert into message_send(msg_id,send_to,have_send) VALUES(?,?,?)";
+		stmt = db.getStatement(sql);
+		
+		try {
+			stmt.setString(1, msg_id);
+			stmt.setString(2, to);
+			stmt.setString(3, "T");
+			stmt = null;
+			db.update();
+		} catch (SQLException e) {
+			e.printStackTrace();
+			db.clean();
+			return false;
+		} finally {
+			db.clean();
+		}
+		
+		File filepath = new File("msg_id.txt");
+		try {
+			BufferedWriter bw = new BufferedWriter(new FileWriter(filepath));
+			bw.write(msg_id);
+			bw.newLine();
+			bw.flush();
+			bw.close();
+		} catch (IOException e) {
+			System.out.println(msg_id);
+			e.printStackTrace();
+		} finally {
+		}
+		
+		return true;
+	}
+	
+	/*
+	 * 查询与某个好友或者群中包含某个子段的聊天记录
+	 * 
+	 * 返回格式是用回车\n隔离的消息Vector,每个Message至多包含 Parameter.ChatRecordPacketSize条信息.
+	 * 信息都会使用SecurityCipher类进行加密,因此不会在消息内部出现\n.
+	 * 
+	 * 输入需要查询请求用户的id, 查询的好友/群的id, 被查询ID是否是群的布尔变量, 查询的字段, 
+	 * 申请查询的服务器进程的密钥
+	 */
+	protected Vector<Message> search_chat_message(String user_id, String search_id,
+			boolean isGroup, String search_text, byte[] alice){
+		Vector<Message> ans = new Vector<Message>();
+		DBControl db = new DBControl(true);
+		
+		String sql = "";
+		PreparedStatement stmt = null;
+		ResultSet rs = null;
+		
+		if (isGroup){
+			sql = "select * from message as a where a.msg_type=8 and a.is_group='T' and "
+					+ "a.msg_to=? and locate(?,a.msg)>0";
+		}else{
+			sql = "select * from message as a where a.msg_type=8 and a.is_group='F' and "
+					+ "((a.msg_to=? and a.msg_from=?) or (a.msg_from=? and a.msg_to=?)) and locate(?,a.msg)>0";
+		}
+		
+		stmt = db.getStatement(sql);
+		
+		try{
+			if (isGroup){
+				stmt.setString(1, search_id);
+				stmt.setString(2, search_text);
+			}
+			else{
+				stmt.setString(1, search_id);
+				stmt.setString(2, user_id);
+				stmt.setString(3, search_id);
+				stmt.setString(4, user_id);
+				stmt.setString(5, search_text);
+			}
+			stmt = null;
+			rs = db.query();
+			
+			String result = "";
+			int count = 0;
+			if (rs != null){
+				while (rs.next()){
+					String msg_to = rs.getString("msg_to");
+					String msg_from = rs.getString("msg_from");
+					String msg = rs.getString("msg");
+					if (isGroup){
+						String[] from_split = msg_from.split("_");
+						String send_msg = from_split[0] + " " + msg;
+						send_msg = SecurityCipher.get_send(alice, send_msg);
+						if (count != 0){
+							result += "\n";
+						}
+						result += send_msg;
+						count += 1;
+						if (count == Parameter.ChatRecordPacketSize){
+							Message tmp_msg = new Message(18, "" , user_id, isGroup, result);
+							ans.addElement(tmp_msg);
+							result = "";
+							count = 0;
+						}
+					}
+					else{
+						String send_msg = msg_from + " " + msg;
+						send_msg = SecurityCipher.get_send(alice, send_msg);
+						if (count != 0){
+							result += "\n";
+						}
+						result += send_msg;
+						count += 1;
+						if (count == Parameter.ChatRecordPacketSize){
+							Message tmp_msg = new Message(18, "", user_id, isGroup, result);
+							ans.addElement(tmp_msg);
+							result = "";
+							count = 0;
+						}
+					}
+				}
+				
+				if (count != 0){
+					Message tmp_msg = new Message(18, "", user_id, isGroup, result);
+					ans.addElement(tmp_msg);
+					result = "";
+					count = 0;
+				}
+			}
+		}catch(SQLException e){
+			e.printStackTrace();
+		}finally{
+			if (rs != null)
+				db.closeResultSet(rs);
+			db.clean();
+		}
+		
+		return ans;
+	}
+	
 	private Server() {
 		load_Account();
 
 		try {
-			ServerSocket serversocket = new ServerSocket(1234);
+			ServerSocket serversocket = new ServerSocket(Parameter.Server_Port);
 			Socket socket = null;
 
 			int count = 0;
@@ -1066,13 +1262,16 @@ public class Server {
 				serverthread.start();
 
 				count += 1;
-				System.out.println("client num : " + count);
+				System.out.println("already connect client : " + count);
 				InetAddress address = socket.getInetAddress();
 				System.out.println("current server ip: " + address.getHostAddress());
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		} finally {
+			for (ServerThread st : accountServer.values())
+				if (st != null)
+					st.closeSocket();
 		}
 	}
 

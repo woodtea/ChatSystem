@@ -85,4 +85,5 @@ public class Message implements Serializable, Cloneable {
  * 15: 群主踢人
  * 16: 请求群列表包
  * 17: 确认帧(发送成功/发送失败及原因)
+ * 18: 聊天消息查询包
  */

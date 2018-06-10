@@ -6,10 +6,15 @@ import java.util.function.Function;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+
+import testChat.Client;
 public class Log {
 	static JFrame frame;
 	public static void main(String[] args) {    
-   
+		Client client = new Client();
+		Functions.setClient(client);
+		client.start();
+		
 		JFrame.setDefaultLookAndFeelDecorated(true);
 		frame = new JFrame("Login");
  
@@ -63,10 +68,9 @@ public class Log {
 		inform.setForeground(Color.RED);
 		contentPane.add(inform);
 		
-		
-		
 		JButton login = new JButton("登录");
 		login.setBounds(80, 340, 123, 29);
+		
 		contentPane.add(login);
 		
 		login.addMouseListener(new MouseAdapter() {
@@ -89,10 +93,10 @@ public class Log {
 		register.setBounds(339, 340, 123, 29);
 		contentPane.add(register);
 		
-		login.addMouseListener(new MouseAdapter() {
+		register.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent arg0) {
-				boolean success=Functions.log(usrText.getText(), password.getPassword());
+				boolean success=Functions.register(usrText.getText(), password.getPassword());
 				if(success)
 				{
 					inform.setText("注册成功！");

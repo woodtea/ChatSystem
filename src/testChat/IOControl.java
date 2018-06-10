@@ -11,23 +11,17 @@ public class IOControl {
 		pw.flush();
 	}
 	
-	public static void print(ObjectOutputStream os, Message msg){
-		try{
-			os.writeObject(msg);
-			os.flush();
-		}catch(IOException e){
-			e.printStackTrace();
-		}
+	public static void print(ObjectOutputStream os, Message msg) throws IOException{
+		os.writeObject(msg);
+		os.flush();
 	}
 	
-	public static Message read(ObjectInputStream os){
+	public static Message read(ObjectInputStream os)throws IOException{
 		Message msg=null;
 		try{
 			msg=(Message)os.readObject();
 		}catch(EOFException e){
-			e.printStackTrace();
-		}catch(IOException e){
-			e.printStackTrace();
+			//e.printStackTrace();
 		}catch (ClassNotFoundException e) {
 			e.printStackTrace();
 		}
